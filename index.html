@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VangaTech 前域科技 — Claude Implementation Partner</title>
+<meta name="description" content="VangaTech builds Claude-based workflow automation and internal tools for Taiwan SMEs — quoting, order management, and email automation, shipped and running.">
+<meta property="og:title" content="VangaTech 前域科技 — Claude Implementation Partner">
+<meta property="og:description" content="We diagnose administrative workflows for Taiwan SMEs, build internal tools with Claude, and turn what works into repeatable solutions.">
+<meta property="og:type" content="website">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%231C1B18'/%3E%3Ctext x='50' y='68' font-size='58' font-family='Georgia,serif' fill='%23ECE9E1' text-anchor='middle'%3EV%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600&family=Noto+Serif+TC:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper: #ECE9E1;
+    --paper-deep: #E2DED2;
+    --ink: #1C1B18;
+    --ink-soft: #55524a;
+    --line: #C9C3B4;
+    --teal: #1F6B5C;
+    --teal-deep: #164e43;
+    --stamp-red: #B33A2E;
+    --gold: #9C7A32;
+    --max: 1080px;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Source Serif 4', serif;
+    font-size:17px;
+    line-height:1.65;
+    -webkit-font-smoothing:antialiased;
+  }
+  html[lang="zh"] body{font-family:'Noto Serif TC', serif;}
+  ::selection{background:var(--teal); color:var(--paper);}
+  h1,h2,h3,.display{
+    font-family:'Space Grotesk', sans-serif;
+    letter-spacing:-0.01em;
+    margin:0;
+  }
+  html[lang="zh"] h1, html[lang="zh"] h2, html[lang="zh"] h3{
+    font-family:'Noto Serif TC', serif; letter-spacing:0;
+  }
+  .mono{ font-family:'IBM Plex Mono', monospace; letter-spacing:0.02em; }
+  a{color:inherit;}
+  .wrap{max-width:var(--max); margin:0 auto; padding:0 28px;}
+
+  header{
+    position:sticky; top:0; z-index:50;
+    background:rgba(236,233,225,0.9);
+    backdrop-filter:blur(6px);
+    border-bottom:1px solid var(--line);
+  }
+  .nav{ display:flex; align-items:center; justify-content:space-between; padding:18px 0; gap:16px; }
+  .brand{
+    font-family:'Space Grotesk', sans-serif;
+    font-weight:700; font-size:1.15rem;
+    display:flex; align-items:baseline; gap:8px; flex-shrink:0;
+  }
+  .brand .zh-name{font-family:'Noto Serif TC', serif; font-weight:600; font-size:0.95rem; color:var(--ink-soft);}
+  .brand small{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:0.6rem; color:var(--ink-soft); font-weight:400; letter-spacing:0.08em;
+    display:block; margin-top:2px;
+  }
+  .navlinks{display:flex; gap:26px; font-family:'IBM Plex Mono', monospace; font-size:0.78rem;}
+  .navlinks a{text-decoration:none; color:var(--ink-soft); transition:color .2s;}
+  .navlinks a:hover{color:var(--teal-deep);}
+  .navright{display:flex; align-items:center; gap:14px;}
+  .langtoggle{
+    font-family:'IBM Plex Mono', monospace; font-size:0.74rem;
+    border:1px solid var(--line); background:none; cursor:pointer;
+    padding:6px 12px; color:var(--ink-soft); letter-spacing:0.06em;
+  }
+  .langtoggle:hover{border-color:var(--ink); color:var(--ink);}
+  .navcta{
+    border:1px solid var(--ink); padding:7px 16px;
+    text-decoration:none; font-family:'IBM Plex Mono', monospace;
+    font-size:0.76rem; white-space:nowrap;
+  }
+  .navcta:hover{background:var(--ink); color:var(--paper);}
+  .navtoggle-btn{display:none; background:none; border:none; cursor:pointer; padding:6px; z-index:60; position:relative;}
+  .navtoggle-btn span{display:block; width:22px; height:2px; background:var(--ink); margin:5px 0; transition:transform .2s, opacity .2s;}
+  .navtoggle-btn.open span:nth-child(1){transform:translateY(7px) rotate(45deg);}
+  .navtoggle-btn.open span:nth-child(2){opacity:0;}
+  .navtoggle-btn.open span:nth-child(3){transform:translateY(-7px) rotate(-45deg);}
+  .mobile-menu{
+    display:none; position:fixed; top:0; left:0; right:0; bottom:0;
+    background:var(--paper); z-index:55; padding:100px 28px 40px;
+    flex-direction:column; gap:0;
+  }
+  .mobile-menu.open{display:flex;}
+  .mobile-menu a{
+    text-decoration:none; color:var(--ink); font-family:'Space Grotesk',sans-serif;
+    font-size:1.4rem; font-weight:600; padding:18px 0; border-bottom:1px solid var(--line);
+  }
+
+  .hero{ padding:100px 0 90px; border-bottom:1px solid var(--line); position:relative; }
+  .hero-eyebrow{
+    font-family:'IBM Plex Mono', monospace; font-size:0.78rem; color:var(--teal-deep);
+    letter-spacing:0.12em; text-transform:uppercase;
+    display:flex; align-items:center; gap:10px; margin-bottom:26px;
+  }
+  .hero-eyebrow::before{ content:""; width:26px; height:1px; background:var(--stamp-red); }
+  .hero h1{ font-size:clamp(2.1rem, 5vw, 3.6rem); font-weight:700; max-width:16ch; margin-bottom:28px; }
+  .hero h1 em{
+    font-style:normal; color:var(--teal-deep);
+    text-decoration:underline; text-decoration-color:var(--stamp-red);
+    text-decoration-thickness:3px; text-underline-offset:6px;
+  }
+  .hero p.lede{ font-size:1.18rem; max-width:58ch; color:var(--ink-soft); margin-bottom:38px; }
+  .hero-ctas{display:flex; gap:16px; flex-wrap:wrap;}
+  .btn-primary{
+    background:var(--ink); color:var(--paper);
+    padding:14px 26px; text-decoration:none;
+    font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:0.95rem;
+    border:1px solid var(--ink); transition:.2s; display:inline-block;
+  }
+  .btn-primary:hover{background:var(--teal-deep); border-color:var(--teal-deep);}
+  .btn-secondary{
+    padding:14px 26px; text-decoration:none; color:var(--ink);
+    font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:0.95rem;
+    border:1px solid var(--ink); display:inline-block;
+  }
+  .btn-secondary:hover{background:var(--paper-deep);}
+
+  .hero-manifest{
+    margin-top:64px; padding-top:32px; border-top:1px dashed var(--line);
+    display:flex; gap:40px; flex-wrap:wrap;
+  }
+  .manifest-item{font-family:'IBM Plex Mono',monospace; font-size:0.8rem; color:var(--ink-soft);}
+  .manifest-item b{display:block; font-size:1.6rem; font-family:'Space Grotesk',sans-serif; color:var(--ink); font-weight:700;}
+
+  section{padding:90px 0;}
+  .section-head{
+    display:flex; justify-content:space-between; align-items:flex-end;
+    gap:20px; margin-bottom:52px; flex-wrap:wrap;
+    border-bottom:1px solid var(--line); padding-bottom:24px;
+  }
+  .section-num{ font-family:'IBM Plex Mono',monospace; font-size:0.78rem; color:var(--stamp-red); letter-spacing:0.1em; }
+  .section-head h2{font-size:clamp(1.7rem,3.4vw,2.4rem);}
+  .section-desc{max-width:46ch; color:var(--ink-soft); font-size:1rem;}
+
+  #services{background:var(--paper-deep); border-top:1px solid var(--line); border-bottom:1px solid var(--line);}
+  .service-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:1px; background:var(--line); border:1px solid var(--line); }
+  .service-card{ background:var(--paper-deep); padding:36px 30px; position:relative; }
+  .service-tag{ font-family:'IBM Plex Mono',monospace; font-size:0.72rem; color:var(--teal-deep); display:block; margin-bottom:14px; }
+  .service-card h3{font-size:1.28rem; margin-bottom:14px; line-height:1.3;}
+  .service-card p{color:var(--ink-soft); font-size:0.95rem; margin:0;}
+
+  .case-grid{display:flex; flex-direction:column; gap:1px; background:var(--line); border:1px solid var(--line);}
+  .case{ background:var(--paper); display:grid; grid-template-columns:170px 1fr 190px; gap:28px; padding:34px 30px; align-items:center; }
+  .case-id{font-family:'IBM Plex Mono',monospace; color:var(--ink-soft);}
+  .case-id .n{display:block; font-size:2rem; color:var(--ink); font-weight:500; line-height:1;}
+  .case-id .l{font-size:0.72rem; letter-spacing:0.08em;}
+  .case-body h3{font-size:1.3rem; margin-bottom:6px;}
+  .case-client{font-family:'IBM Plex Mono',monospace; font-size:0.78rem; color:var(--ink-soft); margin-bottom:12px; display:block;}
+  .case-body p{margin:0; color:var(--ink-soft); font-size:0.95rem;}
+  .stamp{
+    justify-self:end; font-family:'IBM Plex Mono',monospace; font-weight:500; font-size:0.78rem;
+    letter-spacing:0.1em; text-transform:uppercase; padding:9px 16px; border:2px solid; border-radius:2px;
+    transform:rotate(-4deg); white-space:nowrap;
+  }
+  .stamp.done{color:var(--teal-deep); border-color:var(--teal-deep);}
+  .stamp.progress{color:var(--stamp-red); border-color:var(--stamp-red);}
+
+  #capability{background:var(--ink); color:var(--paper); border-top:1px solid var(--line);}
+  #capability .section-head{border-bottom-color:#3a382f;}
+  #capability .section-desc{color:#c9c6bc;}
+  .cap-grid{display:grid; grid-template-columns:1fr 1fr; gap:48px;}
+  .cap-list{list-style:none; margin:0; padding:0;}
+  .cap-list li{ padding:16px 0; border-bottom:1px solid #3a382f; display:flex; justify-content:space-between; gap:16px; font-size:0.98rem; }
+  .cap-list li:first-child{padding-top:0;}
+  .cap-status{font-family:'IBM Plex Mono',monospace; font-size:0.75rem; color:#8fbdb2; white-space:nowrap;}
+  .cap-note{ font-family:'IBM Plex Mono',monospace; font-size:0.85rem; color:#c9c6bc; border-left:2px solid var(--teal); padding-left:20px; line-height:1.8; }
+
+  #contact{text-align:center;}
+  #contact h2{font-size:clamp(1.9rem,4.5vw,2.8rem); max-width:18ch; margin:0 auto 20px;}
+  #contact p{max-width:48ch; margin:0 auto 36px; color:var(--ink-soft); font-size:1.05rem;}
+
+  footer{
+    border-top:1px solid var(--line); padding:36px 0;
+    font-family:'IBM Plex Mono',monospace; font-size:0.78rem; color:var(--ink-soft);
+  }
+  .footer-inner{display:flex; justify-content:space-between; width:100%; flex-wrap:wrap; gap:10px;}
+
+  .reveal{opacity:0; transform:translateY(16px); transition:opacity .6s ease, transform .6s ease;}
+  .reveal.in{opacity:1; transform:translateY(0);}
+
+  @media (max-width:760px){
+    .navlinks{display:none;}
+    .navtoggle-btn{display:block;}
+    .service-grid{grid-template-columns:1fr;}
+    .case{grid-template-columns:1fr; gap:14px;}
+    .stamp{justify-self:start; transform:rotate(-3deg);}
+    .cap-grid{grid-template-columns:1fr; gap:32px;}
+    .hero{padding:70px 0 60px;}
+    section{padding:64px 0;}
+  }
+  @media (prefers-reduced-motion: reduce){
+    html{scroll-behavior:auto;}
+    .reveal{transition:none; opacity:1; transform:none;}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap nav">
+    <div class="brand">
+      <div>VangaTech <span class="zh-name">前域科技</span><small>CLAUDE IMPLEMENTATION PARTNER</small></div>
+    </div>
+    <nav class="navlinks">
+      <a href="#services" data-en="Services" data-zh="服務">Services</a>
+      <a href="#cases" data-en="Case Files" data-zh="案例">Case Files</a>
+      <a href="#capability" data-en="Capability" data-zh="能力">Capability</a>
+    </nav>
+    <div class="navright">
+      <button class="langtoggle" id="langBtn">中文</button>
+      <a class="navcta" href="mailto:info@vangatechai.com" data-en="Get in touch" data-zh="合作洽詢">Get in touch</a>
+    </div>
+    <button class="navtoggle-btn" id="navToggleBtn" aria-label="Open menu" aria-expanded="false"><span></span><span></span><span></span></button>
+  </div>
+  <nav class="mobile-menu" id="mobileMenu">
+    <a href="#services" data-en="Services" data-zh="服務">Services</a>
+    <a href="#cases" data-en="Case Files" data-zh="案例">Case Files</a>
+    <a href="#capability" data-en="Capability" data-zh="能力">Capability</a>
+    <a href="mailto:info@vangatechai.com" data-en="Get in touch" data-zh="合作洽詢">Get in touch</a>
+  </nav>
+</header>
+
+<section class="hero">
+  <div class="wrap">
+    <div class="hero-eyebrow" data-en="Case File · TW-SME-OPS" data-zh="案卷字號 · TW-SME-OPS">Case File · TW-SME-OPS</div>
+    <h1 class="reveal" data-en='Your back office doesn&rsquo;t need more <em>headcount</em>.' data-zh="中小企業的內部作業，<em>不必靠人力堆出來</em>">Your back office doesn&rsquo;t need more <em>headcount</em>.</h1>
+    <p class="lede reveal" data-en="We build with Claude to diagnose administrative workflows for Taiwan SMEs, ship internal tools, and turn what works into solutions we can redeploy — not a slide deck, a system that runs." data-zh="我們用 Claude 幫台灣的中小企業診斷行政流程、開發內部工具，並把可複製的解法沉澱成能重複導入的方案——不是顧問簡報，是能實際跑起來的系統。">We build with Claude to diagnose administrative workflows for Taiwan SMEs, ship internal tools, and turn what works into solutions we can redeploy — not a slide deck, a system that runs.</p>
+    <div class="hero-ctas reveal">
+      <a class="btn-primary" href="mailto:info@vangatechai.com" data-en="Book a workflow review" data-zh="預約流程診斷">Book a workflow review</a>
+      <a class="btn-secondary" href="#cases" data-en="See case files" data-zh="看實際案例">See case files</a>
+    </div>
+    <div class="hero-manifest reveal">
+      <div class="manifest-item"><b>4</b><span data-en="shipped or in-progress projects" data-zh="件已交付／進行中專案">shipped or in-progress projects</span></div>
+      <div class="manifest-item"><b>3</b><span data-en="industries: food, trade, e-commerce" data-zh="個產業：食品／貿易／電商">industries: food, trade, e-commerce</span></div>
+      <div class="manifest-item"><b>1</b><span data-en="method: diagnose → build → redeploy" data-zh="套方法：診斷 → 建置 → 複製">method: diagnose → build → redeploy</span></div>
+    </div>
+  </div>
+</section>
+
+<section id="services">
+  <div class="wrap">
+    <div class="section-head">
+      <div>
+        <div class="section-num">01 / SERVICES</div>
+        <h2 data-en="What we do" data-zh="我們做的三件事">What we do</h2>
+      </div>
+      <p class="section-desc" data-en="Starting with an inventory of the paperwork your team still does by hand, ending with a tool your team can maintain on its own." data-zh="從盤點手上的紙本流程開始，到交付一套你的團隊自己就能維護的工具。">Starting with an inventory of the paperwork your team still does by hand, ending with a tool your team can maintain on its own.</p>
+    </div>
+    <div class="service-grid">
+      <div class="service-card reveal">
+        <span class="service-tag" data-en="STEP 01 · DIAGNOSE" data-zh="STEP 01 · 診斷">STEP 01 · DIAGNOSE</span>
+        <h3 data-en="Workflow diagnosis" data-zh="流程診斷">Workflow diagnosis</h3>
+        <p data-en="We map the manual work — quoting, reconciliation, order handling, document exchange — and find what Claude can take over first." data-zh="盤點目前靠人工處理的作業——報價、對帳、訂單、文件往來——找出哪些是可以直接用 Claude 接手的重複性工作。">We map the manual work — quoting, reconciliation, order handling, document exchange — and find what Claude can take over first.</p>
+      </div>
+      <div class="service-card reveal">
+        <span class="service-tag" data-en="STEP 02 · BUILD" data-zh="STEP 02 · 建置">STEP 02 · BUILD</span>
+        <h3 data-en="Internal tools" data-zh="內部工具開發">Internal tools</h3>
+        <p data-en="We build automation and internal apps for what we find, wired into your existing email, e-commerce backend, or quoting system." data-zh="針對盤點出的流程，開發專屬的自動化工具與內部 App，介接你既有的信箱、電商後台或報價系統。">We build automation and internal apps for what we find, wired into your existing email, e-commerce backend, or quoting system.</p>
+      </div>
+      <div class="service-card reveal">
+        <span class="service-tag" data-en="STEP 03 · REDEPLOY" data-zh="STEP 03 · 複製">STEP 03 · REDEPLOY</span>
+        <h3 data-en="Repeatable solutions" data-zh="可複製解決方案">Repeatable solutions</h3>
+        <p data-en="Proven fixes get packaged into templates, so the next company in the same industry can go live faster." data-zh="把驗證過的解法整理成可重複導入的方案模板，讓同產業的下一家客戶能用更短的時間上線。">Proven fixes get packaged into templates, so the next company in the same industry can go live faster.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="cases">
+  <div class="wrap">
+    <div class="section-head">
+      <div>
+        <div class="section-num">02 / CASE FILES</div>
+        <h2 data-en="Case files" data-zh="案例紀錄">Case files</h2>
+      </div>
+      <p class="section-desc" data-en="Ordered by delivery date, marked with current status — completed or in progress, all of them live systems." data-zh="依交付時間排序，標記目前狀態——完成的、進行中的，都是實際上線的系統。">Ordered by delivery date, marked with current status — completed or in progress, all of them live systems.</p>
+    </div>
+    <div class="case-grid">
+
+      <div class="case reveal">
+        <div class="case-id"><span class="n">01</span><span class="l">LABELX</span></div>
+        <div class="case-body">
+          <h3 data-en="Food-label scanning iOS app" data-zh="食品掃描 iOS App">Food-label scanning iOS app</h3>
+          <span class="case-client">LabelX</span>
+          <p data-en="An iOS app that scans food packaging and surfaces ingredient information, built and shipped to the App Store." data-zh="掃描食品包裝即可辨識並呈現成分資訊的 iOS 應用程式，從開發到上架完整交付。">An iOS app that scans food packaging and surfaces ingredient information, built and shipped to the App Store.</p>
+        </div>
+        <span class="stamp done" data-en="Completed" data-zh="已完成">Completed</span>
+      </div>
+
+      <div class="case reveal">
+        <div class="case-id"><span class="n">02</span><span class="l">DACO</span></div>
+        <div class="case-body">
+          <h3 data-en="Electronic component quoting automation" data-zh="電子零件報價自動化工具">Electronic component quoting automation</h3>
+          <span class="case-client" data-en="DACO Semiconductor" data-zh="DACO Semiconductor">DACO Semiconductor</span>
+          <p data-en="Automates matching component quotes and generating price books, replacing a manual comparison process. The current project is complete; related projects are in consultation." data-zh="自動化比對電子零件報價資料、產出價格書，取代原本仰賴人工比對的流程。目前專案已完成，其他相關專案諮詢中。">Automates matching component quotes and generating price books, replacing a manual comparison process. The current project is complete; related projects are in consultation.</p>
+        </div>
+        <span class="stamp done" data-en="Completed" data-zh="已完成">Completed</span>
+      </div>
+
+      <div class="case reveal">
+        <div class="case-id"><span class="n">03</span><span class="l">TONWALL</span></div>
+        <div class="case-body">
+          <h3 data-en="Automated email quoting &amp; parts-deadline updates" data-zh="Email 原物料自動報價回覆＋零件效期自動更新系統">Automated email quoting &amp; parts-deadline updates</h3>
+          <span class="case-client" data-en="Tonwall Corporation (東吳行), trading company" data-zh="東吳行 Tonwall Corporation（外貿公司）">Tonwall Corporation (東吳行), trading company</span>
+          <p data-en="Reads incoming raw-material quote requests by email and replies automatically, while keeping parts-deadline data updated — cutting down manual back-and-forth." data-zh="自動辨識客戶來信中的原物料詢價需求並回覆報價，並同步自動更新零件效期資訊，減少業務人工往返時間。">Reads incoming raw-material quote requests by email and replies automatically, while keeping parts-deadline data updated — cutting down manual back-and-forth.</p>
+        </div>
+        <span class="stamp progress" data-en="In progress" data-zh="進行中">In progress</span>
+      </div>
+
+      <div class="case reveal">
+        <div class="case-id"><span class="n">04</span><span class="l">YUHAN</span></div>
+        <div class="case-body">
+          <h3 data-en="Shopline order-management automation" data-zh="Shopline 電商自動訂單管理系統">Shopline order-management automation</h3>
+          <span class="case-client" data-en="Yuhan Company (船山舒雞)" data-zh="船山舒雞 Yuhan Company">Yuhan Company (船山舒雞)</span>
+          <p data-en="Connects to the Shopline storefront to automate order-status updates and fulfillment, reducing manual data entry and checking." data-zh="介接 Shopline 電商後台，自動處理訂單狀態更新與出貨管理，減少人工登打與核對的作業量。">Connects to the Shopline storefront to automate order-status updates and fulfillment, reducing manual data entry and checking.</p>
+        </div>
+        <span class="stamp progress" data-en="In progress" data-zh="進行中">In progress</span>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<section id="capability">
+  <div class="wrap">
+    <div class="section-head">
+      <div>
+        <div class="section-num">03 / CAPABILITY</div>
+        <h2 data-en="How we build with Claude" data-zh="我們如何使用 Claude">How we build with Claude</h2>
+      </div>
+      <p class="section-desc" data-en="Every case file above was built with the same toolchain — this is working capability, not a pitch." data-zh="每一件案例都是用同一套工具鏈打造——不是顧問話術，是實際的開發能力。">Every case file above was built with the same toolchain — this is working capability, not a pitch.</p>
+    </div>
+    <div class="cap-grid">
+      <ul class="cap-list">
+        <li><span data-en="Claude API integration (email, e-commerce, internal systems)" data-zh="Claude API 整合開發（信箱、電商後台、內部系統）">Claude API integration (email, e-commerce, internal systems)</span><span class="cap-status" data-en="In build" data-zh="實作中">In build</span></li>
+        <li><span data-en="iOS app development &amp; App Store delivery" data-zh="iOS App 開發與上架">iOS app development &amp; App Store delivery</span><span class="cap-status" data-en="Delivered" data-zh="已交付">Delivered</span></li>
+        <li><span data-en="Anthropic Academy coursework" data-zh="Anthropic Academy 課程">Anthropic Academy coursework</span><span class="cap-status" data-en="Certified" data-zh="已認證">Certified</span></li>
+        <li><span data-en="Claude Certified Architect credential" data-zh="Claude Certified Architect 認證">Claude Certified Architect credential</span><span class="cap-status" data-en="In preparation" data-zh="準備中">In preparation</span></li>
+      </ul>
+      <p class="cap-note" data-en="We think the strongest proof of capability is a system you can actually see run — not a slide claiming AI expertise. Every case above is one we can walk you through in detail." data-zh="我們相信最有說服力的能力證明，是能實際展示、能 demo 的系統，而不是一份標榜「AI 專家」的簡報。上面四個案例都是可以介紹細節、看實際畫面的真實專案。">We think the strongest proof of capability is a system you can actually see run — not a slide claiming AI expertise. Every case above is one we can walk you through in detail.</p>
+    </div>
+  </div>
+</section>
+
+<section id="contact">
+  <div class="wrap">
+    <h2 data-en="Want to talk about automating your workflow?" data-zh="想討論你們公司的流程怎麼自動化？">Want to talk about automating your workflow?</h2>
+    <p data-en="Quoting, reconciliation, orders, or document handling — show us how you're doing it today." data-zh="不管是報價、對帳、訂單還是文件往來，先讓我們看看你們目前是怎麼處理的。">Quoting, reconciliation, orders, or document handling — show us how you're doing it today.</p>
+    <a class="btn-primary" href="mailto:info@vangatechai.com" data-en="Email us" data-zh="寄信聊聊">Email us</a>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap footer-inner">
+    <span data-en="VangaTech 前域科技有限公司 © 2026" data-zh="前域科技有限公司 VangaTech © 2026">VangaTech 前域科技有限公司 © 2026</span>
+    <span>TAIWAN · CLAUDE IMPLEMENTATION PARTNER</span>
+  </div>
+</footer>
+
+<script>
+  // reveal on scroll
+  const els = document.querySelectorAll('.reveal');
+  const io = new IntersectionObserver((entries)=>{
+    entries.forEach(e=>{ if(e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target); } });
+  }, {threshold:0.15});
+  els.forEach(el=>io.observe(el));
+
+  // mobile menu
+  const navToggleBtn = document.getElementById('navToggleBtn');
+  const mobileMenu = document.getElementById('mobileMenu');
+  navToggleBtn.addEventListener('click', ()=>{
+    const isOpen = mobileMenu.classList.toggle('open');
+    navToggleBtn.classList.toggle('open', isOpen);
+    navToggleBtn.setAttribute('aria-expanded', isOpen);
+  });
+  mobileMenu.querySelectorAll('a').forEach(a=>a.addEventListener('click', ()=>{
+    mobileMenu.classList.remove('open');
+    navToggleBtn.classList.remove('open');
+    navToggleBtn.setAttribute('aria-expanded', 'false');
+  }));
+
+  // language toggle
+  const langBtn = document.getElementById('langBtn');
+  let current = 'en';
+  function applyLang(lang){
+    document.documentElement.setAttribute('lang', lang);
+    document.querySelectorAll('[data-en]').forEach(el=>{
+      el.innerHTML = lang === 'en' ? el.getAttribute('data-en') : el.getAttribute('data-zh');
+    });
+    langBtn.textContent = lang === 'en' ? '中文' : 'EN';
+  }
+  langBtn.addEventListener('click', ()=>{
+    current = current === 'en' ? 'zh' : 'en';
+    applyLang(current);
+  });
+</script>
+
+</body>
+</html>
