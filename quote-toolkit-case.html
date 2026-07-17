@@ -1,0 +1,526 @@
+<title>Quote Sheet Automation — Solution Case Study</title>
+<style>
+  :root {
+    --paper: #F6F8F9;
+    --surface: #FFFFFF;
+    --ink: #1C2430;
+    --ink-soft: #55616F;
+    --line: #D8DEE4;
+    --accent: #A85C32;          /* copper — from the copper baseplate of power diodes */
+    --accent-soft: #F3E4DA;
+    --steel: #3D5A73;
+    --cell-yellow: #F5E9B8;     /* the yellow zone in the actual pricebook */
+    --cell-blue: #DCE8F4;       /* the light-blue zone in the actual pricebook */
+    --cell-grey: #E3E5E7;       /* the grey "not yet queried" marker */
+    --good: #2E7D4F;
+    --warn: #B7791F;
+    --mono: "SF Mono", "Cascadia Code", Consolas, "Courier New", monospace;
+    --sans: -apple-system, "Segoe UI", "Helvetica Neue", Arial, "PingFang TC", "Noto Sans TC", sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #141A21;
+      --surface: #1C242E;
+      --ink: #E8EDF2;
+      --ink-soft: #9AA7B4;
+      --line: #33404D;
+      --accent: #D08554;
+      --accent-soft: #3A2A1F;
+      --steel: #7FA3C2;
+      --cell-yellow: #4A4223;
+      --cell-blue: #24384D;
+      --cell-grey: #333A42;
+      --good: #5CBA8A;
+      --warn: #D9A54C;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #141A21;
+    --surface: #1C242E;
+    --ink: #E8EDF2;
+    --ink-soft: #9AA7B4;
+    --line: #33404D;
+    --accent: #D08554;
+    --accent-soft: #3A2A1F;
+    --steel: #7FA3C2;
+    --cell-yellow: #4A4223;
+    --cell-blue: #24384D;
+    --cell-grey: #333A42;
+    --good: #5CBA8A;
+    --warn: #D9A54C;
+  }
+  :root[data-theme="light"] {
+    --paper: #F6F8F9;
+    --surface: #FFFFFF;
+    --ink: #1C2430;
+    --ink-soft: #55616F;
+    --line: #D8DEE4;
+    --accent: #A85C32;
+    --accent-soft: #F3E4DA;
+    --steel: #3D5A73;
+    --cell-yellow: #F5E9B8;
+    --cell-blue: #DCE8F4;
+    --cell-grey: #E3E5E7;
+    --good: #2E7D4F;
+    --warn: #B7791F;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--sans);
+    line-height: 1.7;
+    font-size: 16px;
+  }
+  main { max-width: 880px; margin: 0 auto; padding: 0 24px 96px; }
+  section { margin-top: 88px; }
+
+  .eyebrow {
+    font-size: 12px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--accent);
+    font-weight: 600;
+    margin: 0 0 12px;
+  }
+  h1, h2, h3 { text-wrap: balance; line-height: 1.25; }
+  h1 { font-size: clamp(30px, 5vw, 44px); font-weight: 700; margin: 0 0 20px; letter-spacing: -0.015em; }
+  h2 { font-size: clamp(22px, 3.5vw, 28px); font-weight: 700; margin: 0 0 16px; letter-spacing: -0.01em; }
+  h3 { font-size: 17px; font-weight: 700; margin: 0 0 8px; }
+  p { margin: 0 0 16px; max-width: 66ch; }
+  .lede { font-size: 18px; color: var(--ink-soft); max-width: 58ch; }
+  .muted { color: var(--ink-soft); }
+  .mono { font-family: var(--mono); font-size: 0.92em; }
+  a { color: var(--accent); }
+  a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  /* ---------- Hero ---------- */
+  header.hero { padding-top: 72px; }
+  .hero-grid-note {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--ink-soft);
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    padding: 2px 10px;
+    margin-bottom: 24px;
+    background: var(--surface);
+  }
+
+  /* Animated demo row: prices fill in cell by cell */
+  .hero-demo {
+    margin-top: 40px;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    overflow-x: auto;
+  }
+  .hero-demo table { border-collapse: collapse; width: 100%; min-width: 640px; }
+  .hero-demo th, .hero-demo td {
+    border: 1px solid var(--line);
+    padding: 7px 12px;
+    font-size: 13px;
+    text-align: right;
+    font-family: var(--mono);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  .hero-demo th {
+    background: var(--paper);
+    color: var(--ink-soft);
+    font-weight: 600;
+    text-align: center;
+  }
+  .hero-demo td.pn { text-align: left; font-weight: 600; }
+  .hero-demo td.fill { background: var(--cell-blue); opacity: 0; animation: cellin 0.4s ease forwards; }
+  .hero-demo td.fill:nth-child(3) { animation-delay: 0.3s; }
+  .hero-demo td.fill:nth-child(4) { animation-delay: 0.55s; }
+  .hero-demo td.fill:nth-child(5) { animation-delay: 0.8s; }
+  .hero-demo td.fill:nth-child(6) { animation-delay: 1.05s; }
+  .hero-demo td.fill:nth-child(7) { animation-delay: 1.3s; }
+  .hero-demo td.fill:nth-child(8) { animation-delay: 1.55s; }
+  @keyframes cellin { to { opacity: 1; } }
+  @media (prefers-reduced-motion: reduce) {
+    .hero-demo td.fill { animation: none; opacity: 1; }
+  }
+  .hero-caption {
+    font-size: 13px;
+    color: var(--ink-soft);
+    padding: 10px 14px;
+    border-top: 1px dashed var(--line);
+    font-family: var(--mono);
+  }
+
+  /* ---------- Stats ---------- */
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); margin-top: 32px; }
+  .stat { background: var(--surface); padding: 20px 18px; }
+  .stat b { display: block; font-size: 30px; font-weight: 700; font-family: var(--mono); font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+  .stat span { font-size: 13px; color: var(--ink-soft); }
+
+  /* ---------- Pipeline ---------- */
+  .pipeline { counter-reset: step; display: grid; gap: 12px; margin-top: 28px; }
+  .step {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    padding: 18px 20px 18px 64px;
+    position: relative;
+  }
+  .step::before {
+    counter-increment: step;
+    content: counter(step, decimal-leading-zero);
+    position: absolute;
+    left: 20px; top: 18px;
+    font-family: var(--mono);
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--steel);
+  }
+  .step h3 { margin-bottom: 4px; }
+  .step p { margin: 0; font-size: 14.5px; color: var(--ink-soft); max-width: none; }
+  .step.gate { border-left: 4px solid var(--accent); background: linear-gradient(to right, var(--accent-soft), var(--surface) 45%); }
+  .step .badge {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    color: var(--accent);
+    border: 1px solid var(--accent);
+    border-radius: 999px;
+    padding: 1px 10px;
+    margin-left: 8px;
+    vertical-align: 2px;
+  }
+
+  /* ---------- Rule cards ---------- */
+  .rules { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin-top: 28px; }
+  .rule { background: var(--surface); border: 1px solid var(--line); padding: 18px 20px; }
+  .rule .no {
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--accent);
+    letter-spacing: 0.08em;
+    display: block;
+    margin-bottom: 8px;
+  }
+  .rule p { margin: 0; font-size: 14px; color: var(--ink-soft); max-width: none; }
+
+  /* ---------- Excel comparison ---------- */
+  .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 28px; }
+  @media (max-width: 720px) { .compare { grid-template-columns: 1fr; } }
+  .sheet { border: 1px solid var(--line); background: var(--surface); }
+  .sheet-label {
+    padding: 10px 14px;
+    font-size: 13px;
+    font-weight: 700;
+    border-bottom: 1px solid var(--line);
+  }
+  .sheet-label.bad { color: var(--warn); }
+  .sheet-label.good { color: var(--good); }
+  .sheet-scroll { overflow-x: auto; }
+  .sheet table { border-collapse: collapse; width: 100%; min-width: 420px; }
+  .sheet th, .sheet td {
+    border: 1px solid var(--line);
+    font-family: var(--mono);
+    font-size: 12px;
+    padding: 5px 9px;
+    text-align: right;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+  .sheet th { background: var(--paper); color: var(--ink-soft); text-align: center; font-weight: 600; }
+  .sheet td.pn { text-align: left; font-weight: 600; }
+  .sheet td.y { background: var(--cell-yellow); }
+  .sheet td.b { background: var(--cell-blue); }
+  .sheet td.g { background: var(--cell-grey); color: var(--ink-soft); }
+  .sheet td.wrong { background: var(--cell-yellow); position: relative; }
+  .sheet td.wrong::after { content: "✕"; color: var(--warn); font-size: 9px; position: absolute; top: 1px; right: 2px; }
+  .sheet td.commented { position: relative; }
+  .sheet td.commented::after {
+    content: "";
+    position: absolute; top: 0; right: 0;
+    border-top: 7px solid var(--accent);
+    border-left: 7px solid transparent;
+  }
+  .sheet-note { font-size: 12.5px; color: var(--ink-soft); padding: 10px 14px; border-top: 1px dashed var(--line); }
+
+  /* ---------- Cell comment ---------- */
+  .comment-card {
+    margin-top: 24px;
+    max-width: 540px;
+    background: var(--surface);
+    border: 1px solid var(--accent);
+    border-radius: 2px;
+    box-shadow: 4px 4px 0 var(--accent-soft);
+    padding: 16px 20px;
+    font-family: var(--mono);
+    font-size: 13px;
+    line-height: 1.9;
+  }
+  .comment-card .diff { color: var(--good); font-weight: 700; }
+
+  /* ---------- Routing table ---------- */
+  .route-table { border-collapse: collapse; width: 100%; margin-top: 24px; background: var(--surface); }
+  .route-table th, .route-table td { border: 1px solid var(--line); padding: 10px 14px; font-size: 14px; text-align: left; }
+  .route-table th { background: var(--paper); font-size: 12.5px; letter-spacing: 0.06em; color: var(--ink-soft); }
+  .route-table td:first-child { font-family: var(--mono); font-weight: 600; white-space: nowrap; }
+  .route-wrap { overflow-x: auto; }
+  .tag { display: inline-block; font-size: 11.5px; font-weight: 700; border-radius: 999px; padding: 1px 10px; white-space: nowrap; }
+  .tag.go { color: var(--good); border: 1px solid var(--good); }
+  .tag.skip { color: var(--ink-soft); border: 1px solid var(--line); }
+
+  /* ---------- Security ---------- */
+  .secure { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; margin-top: 28px; }
+  .secure .rule h3 { font-size: 15px; }
+
+  /* ---------- Changelog ---------- */
+  .logblock {
+    margin-top: 24px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    padding: 18px 22px;
+    overflow-x: auto;
+  }
+  .logblock pre { margin: 0; font-family: var(--mono); font-size: 12.5px; line-height: 1.8; color: var(--ink-soft); }
+  .logblock .hl { color: var(--ink); font-weight: 700; }
+
+  /* ---------- CTA ---------- */
+  .cta {
+    margin-top: 96px;
+    border: 1px solid var(--line);
+    border-top: 4px solid var(--accent);
+    background: var(--surface);
+    padding: 40px 32px;
+    text-align: center;
+  }
+  .cta h2 { margin-bottom: 10px; }
+  .cta p { margin: 0 auto 24px; }
+  .cta a.btn {
+    display: inline-block;
+    background: var(--accent);
+    color: #fff;
+    text-decoration: none;
+    font-weight: 700;
+    padding: 12px 32px;
+    border-radius: 3px;
+    font-size: 15px;
+  }
+  footer { margin-top: 56px; font-size: 12.5px; color: var(--ink-soft); text-align: center; line-height: 2; }
+</style>
+
+<main>
+  <header class="hero">
+    <span class="hero-grid-note">SOLUTION CASE — QUOTE AUTOMATION</span>
+    <p class="eyebrow">Case Study · Electronic Components Manufacturer</p>
+    <h1>A full day of "look it up, copy it into Excel" — reduced to one command and one human review</h1>
+    <p class="lede">A quote-sheet automation toolkit built for an electronic components manufacturer: batch price lookups through distributors' official APIs, automatic triage of anything questionable, and Excel write-back with a complete audit trail. No web scraping. The original file is never overwritten.</p>
+
+    <div class="hero-demo" aria-label="Animated demo of prices filling into a spreadsheet row">
+      <table>
+        <tr>
+          <th style="text-align:left">Part Number</th><th>1 pc</th><th>5 pc</th><th>13 pc</th><th>26 pc</th><th>52 pc</th><th>104 pc</th>
+        </tr>
+        <tr>
+          <td class="pn">ABC2X50-045A</td>
+          <td class="fill">23.00</td><td class="fill">20.30</td><td class="fill">18.20</td><td class="fill">17.00</td><td class="fill">15.80</td><td class="fill">15.30</td>
+        </tr>
+      </table>
+      <div class="hero-caption">▲ Every price lands with its source URL, query date, and change-vs-last note attached (sample data)</div>
+    </div>
+
+    <div class="stats">
+      <div class="stat"><b>1,700+</b><span>part-number rows in a single pricebook</span></div>
+      <div class="stat"><b>1,000+</b><span>prices fetched in one day's batch run</span></div>
+      <div class="stat"><b>100%</b><span>of written cells traceable to a source</span></div>
+      <div class="stat"><b>0</b><span>part numbers guessed by the system</span></div>
+    </div>
+  </header>
+
+  <section>
+    <p class="eyebrow">Before</p>
+    <h2>The manual process couldn't keep up with a thousand part numbers</h2>
+    <p>Maintaining an electronic-components pricebook used to look like this: an engineer opens a distributor's website, searches one part number at a time, and copies each quantity-tier price into Excel by hand. Thousands of parts. Multiple distributors. Prices that never stop moving.</p>
+    <p>Before the rollout, we found every classic hand-copy failure already living in the file: prices pasted under the wrong quantity column (a 5-piece price sitting in the "10 pc" column), prices updated without touching the date column (fresh data that looks stale), copy-paste rows where someone forgot to change the numbers. Every one of those errors eventually becomes a wrong quote in a customer's inbox.</p>
+  </section>
+
+  <section>
+    <p class="eyebrow">Solution</p>
+    <h2>Five steps, one human gate</h2>
+    <p>The workflow is split into independent, repeatable steps. If any step fails, it can be rerun on its own without contaminating anything else.</p>
+    <div class="pipeline">
+      <div class="step">
+        <h3>Scan the pricebook for lookup targets</h3>
+        <p>Automatically lists parts whose price cells are empty or past their freshness threshold. Specific rows can also be queued by hand.</p>
+      </div>
+      <div class="step">
+        <h3>Batch lookups via official distributor APIs</h3>
+        <p>Uses the official APIs of DigiKey, TME, and other distributors — not scraping. Responses are structured quantity tiers and unit prices; no "have an AI read the screen and guess the numbers."</p>
+      </div>
+      <div class="step">
+        <h3>Automatic triage: clean data vs. needs-a-human</h3>
+        <p>Exact part-number match with clean data → the write queue. Part not found, multiple candidates, or a part number that looks like a spec description → the human-review queue, each with a problem description and a suggested action.</p>
+      </div>
+      <div class="step gate">
+        <h3>Human review<span class="badge">HUMAN GATE</span></h3>
+        <p>The only step that needs a person — and it's kept that way on purpose. Picking the wrong part number changes real quote amounts. That judgment stays with a human; the system never guesses.</p>
+      </div>
+      <div class="step">
+        <h3>Write back to Excel + generate a changelog</h3>
+        <p>Output goes to a new file (the original is never overwritten). Every price cell carries a full annotation, and a Markdown changelog is generated as an audit trail.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <p class="eyebrow">Trust by Design</p>
+    <h2>Why it can be trusted with a pricebook</h2>
+    <p>The biggest risk in automation isn't "couldn't find it" — it's writing the wrong thing, quietly. Every design rule in this toolkit answers a failure we actually encountered:</p>
+    <div class="rules">
+      <div class="rule">
+        <span class="no">RULE 01</span>
+        <h3>Never guess a part number</h3>
+        <p>When a part isn't found — even if the system sees a "close enough" candidate — it goes to human review. It is never substituted automatically.</p>
+      </div>
+      <div class="rule">
+        <span class="no">RULE 02</span>
+        <h3>Never overwrite the original file</h3>
+        <p>All output is written to a new file. The source pricebook is untouched end to end; a person decides if and when to replace it.</p>
+      </div>
+      <div class="rule">
+        <span class="no">RULE 03</span>
+        <h3>Never bulk-clear old data</h3>
+        <p>Only cells with fresh data are overwritten. Removing an old tier requires an explicit human instruction. Valid old data that wasn't part of this run is never touched.</p>
+      </div>
+      <div class="rule">
+        <span class="no">RULE 04</span>
+        <h3>Every cell is traceable</h3>
+        <p>Each written price carries a cell comment: distributor, product URL, query date, and the change versus the previous price. Audits never require opening another system.</p>
+      </div>
+      <div class="rule">
+        <span class="no">RULE 05</span>
+        <h3>Credentials stay out of the code</h3>
+        <p>API credentials live in a separate environment file — never in version control, never in config files or source code.</p>
+      </div>
+      <div class="rule">
+        <span class="no">RULE 06</span>
+        <h3>State is visible</h3>
+        <p>Parts that couldn't be queried (e.g. API quota exhausted) are marked grey — "not yet queried" — in the sheet. No blank cell ever pretends it was checked.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <p class="eyebrow">Before / After</p>
+    <h2>The same row, two different worlds</h2>
+    <div class="compare">
+      <div class="sheet">
+        <div class="sheet-label bad">✕ Hand-copied</div>
+        <div class="sheet-scroll">
+        <table>
+          <tr><th style="text-align:left">Part Number</th><th>1 pc</th><th>10 pc</th><th>25 pc</th><th>50 pc</th></tr>
+          <tr>
+            <td class="pn">ABC2X50-045A</td>
+            <td class="y">23.00</td>
+            <td class="wrong">20.30</td>
+            <td class="wrong">18.20</td>
+            <td class="wrong">15.80</td>
+          </tr>
+        </table>
+        </div>
+        <div class="sheet-note">The 5-piece and 13-piece prices were squeezed into the nearest columns — "10 pc" and "25 pc". The numbers are right, the labels are wrong, and nobody remembers when they were looked up.</div>
+      </div>
+      <div class="sheet">
+        <div class="sheet-label good">✓ Automated</div>
+        <div class="sheet-scroll">
+        <table>
+          <tr><th style="text-align:left">Part Number</th><th>1 pc</th><th>5 pc</th><th>13 pc</th><th>52 pc</th><th>104 pc</th></tr>
+          <tr>
+            <td class="pn">ABC2X50-045A</td>
+            <td class="b commented">23.00</td>
+            <td class="b commented">20.30</td>
+            <td class="b commented">18.20</td>
+            <td class="b commented">15.80</td>
+            <td class="g">pending</td>
+          </tr>
+        </table>
+        </div>
+        <div class="sheet-note">Tier columns align to the quantities actually quoted; every cell carries an annotation (corner triangle); anything unqueried is explicitly grey — never silently blank.</div>
+      </div>
+    </div>
+
+    <div class="comment-card" role="img" aria-label="Sample cell annotation">
+      ABC2X50-045A, 5 pc. Distributor PN: 5806-ABC-ND<br>
+      Source: DigiKey, digikey.com/…/5806-ABC-ND (queried 2026/07/14)<br>
+      <span class="diff">+3.05 USD vs. last price (+12.0%)</span>
+    </div>
+    <p class="muted" style="font-size:13px; margin-top:10px;">▲ The annotation attached to each price cell (sample). Price movement is visible at a glance, and audits trace back to the source by opening the cell.</p>
+  </section>
+
+  <section>
+    <p class="eyebrow">Routing</p>
+    <h2>Which part goes to which distributor — rules decide, not habit</h2>
+    <p>Different brands belong at different distributors: house-brand parts are listed with distributor A, third-party brands are best stocked at distributor B. Those rules live in a config file, not hard-coded in the program:</p>
+    <div class="route-wrap">
+    <table class="route-table">
+      <tr><th>BRAND value</th><th>Routing behavior</th><th>Action</th></tr>
+      <tr><td>contains "TME"</td><td>House part, known to be listed with TME</td><td><span class="tag go">Query TME</span></td></tr>
+      <tr><td>third-party brand</td><td>Purchased component, best coverage at DigiKey</td><td><span class="tag go">Query DigiKey</span></td></tr>
+      <tr><td>house brand only</td><td>Made in-house; distributors won't have it</td><td><span class="tag skip">Skip automatically</span></td></tr>
+    </table>
+    </div>
+    <p style="margin-top:20px;">The same principle runs through the whole toolkit: <b>a new pricebook format = one new config file</b> (which row holds the headers, which column holds part numbers, where the price block sits), and <b>a new distributor = one new fetch script</b>. The core program doesn't change by a single line.</p>
+  </section>
+
+  <section>
+    <p class="eyebrow">Audit Trail</p>
+    <h2>Every run leaves a record a human can read</h2>
+    <p>Beyond cell annotations, every batch update generates a Markdown changelog — who, when, which row's which quantity tier changed to what price, and where the data came from:</p>
+    <div class="logblock">
+<pre><span class="hl"># DigiKey price update log</span>
+<span class="hl">Date</span>: 2026-07-14
+---
+<span class="hl">## Row 16 — ABC2X50-045A</span>
+| Qty | Unit Price (USD) | Source |
+|-----|-----------------|--------|
+| 1   | 23.00           | digikey.com/… (queried 2026/07/14) |
+| 5   | 20.30           | digikey.com/… (queried 2026/07/14) |
+| 13  | 18.20           | digikey.com/… (queried 2026/07/14) |</pre>
+    </div>
+  </section>
+
+  <section>
+    <p class="eyebrow">Data Security</p>
+    <h2>Security decided at the architecture level</h2>
+    <div class="secure">
+      <div class="rule">
+        <h3>The pricebook never leaves the client's machine</h3>
+        <p>The entire toolkit runs locally. Excel files, cost structures, customer information — none of it passes through any third-party server.</p>
+      </div>
+      <div class="rule">
+        <h3>Only part numbers go out</h3>
+        <p>The only data ever transmitted is the part-number string — the same thing anyone can type into a distributor's public search box. Prices and quantities flow in, never out.</p>
+      </div>
+      <div class="rule">
+        <h3>Official APIs, not scraping</h3>
+        <p>Lookups go through the channels distributors provide for exactly this purpose: business batch pricing. No terms-of-service violations, and no breakage every time a website redesigns.</p>
+      </div>
+      <div class="rule">
+        <h3>Credentials handled separately</h3>
+        <p>API keys live in an environment file excluded from version control, and key-management practices are handed over as part of delivery.</p>
+      </div>
+    </div>
+  </section>
+
+  <div class="cta">
+    <h2>Your pricebook could work this way too</h2>
+    <p class="muted">Electronic components, machined parts, or anything with a part-number × tier-price structure —<br>if the supplier offers an official lookup channel, this workflow transfers.</p>
+    <a class="btn" href="mailto:contact@example.com">Tell us about your quoting process</a>
+  </div>
+
+  <footer>
+    This case study is fully anonymized — all part numbers, prices, and company names on this page are fictitious samples.<br>
+    Only the workflow architecture and design principles match the delivered work.
+  </footer>
+</main>
