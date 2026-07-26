@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LabelX — AI Food Label Scanner — VangaTech Case Study</title>
+<meta name="description" content="LabelX: an iOS app that turns a photo of a nutrition label into an explainable health score — a deterministic scoring engine, schema-constrained AI output, and a personalization layer that never touches the score itself.">
+<meta property="og:title" content="LabelX — AI Food Label Scanner — VangaTech">
+<meta property="og:description" content="How a photo of a food label becomes an auditable, personally relevant health verdict in seconds.">
+<meta property="og:type" content="article">
+<style>
+  :root {
+    --paper: #F6F8F5;
+    --surface: #FFFFFF;
+    --ink: #1E2420;
+    --ink-soft: #58635B;
+    --line: #DCE3DC;
+    --accent: #2F7A4D;
+    --accent-soft: #E1EFE3;
+    --steel: #4A6B57;
+    --tl-red: #B3453B;
+    --tl-amber: #B98122;
+    --tl-green: #2F7A4D;
+    --cell-fill: #E1EFE3;
+    --cell-grey: #E6E9E5;
+    --good: #2F7A4D;
+    --warn: #B98122;
+    --stop: #A63D33;
+    --mono: "SF Mono", "Cascadia Code", Consolas, "Courier New", monospace;
+    --sans: -apple-system, "Segoe UI", "Helvetica Neue", Arial, "PingFang TC", "Noto Sans TC", sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #141912;
+      --surface: #1C231D;
+      --ink: #E7ECE5;
+      --ink-soft: #9BAA9E;
+      --line: #313C31;
+      --accent: #6BC48D;
+      --accent-soft: #1E3324;
+      --steel: #7FA98F;
+      --tl-red: #D9776B;
+      --tl-amber: #D9A54C;
+      --tl-green: #6BC48D;
+      --cell-fill: #1E3324;
+      --cell-grey: #2A322A;
+      --good: #6BC48D;
+      --warn: #D9A54C;
+      --stop: #D9776B;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #141912; --surface: #1C231D; --ink: #E7ECE5; --ink-soft: #9BAA9E; --line: #313C31;
+    --accent: #6BC48D; --accent-soft: #1E3324; --steel: #7FA98F;
+    --tl-red: #D9776B; --tl-amber: #D9A54C; --tl-green: #6BC48D;
+    --cell-fill: #1E3324; --cell-grey: #2A322A; --good: #6BC48D; --warn: #D9A54C; --stop: #D9776B;
+  }
+  :root[data-theme="light"] {
+    --paper: #F6F8F5; --surface: #FFFFFF; --ink: #1E2420; --ink-soft: #58635B; --line: #DCE3DC;
+    --accent: #2F7A4D; --accent-soft: #E1EFE3; --steel: #4A6B57;
+    --tl-red: #B3453B; --tl-amber: #B98122; --tl-green: #2F7A4D;
+    --cell-fill: #E1EFE3; --cell-grey: #E6E9E5; --good: #2F7A4D; --warn: #B98122; --stop: #A63D33;
+  }
+
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(--sans); line-height: 1.7; font-size: 16px; }
+  main { max-width: 880px; margin: 0 auto; padding: 0 24px 96px; }
+  section { margin-top: 88px; }
+
+  .eyebrow { font-size: 12px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--accent); font-weight: 600; margin: 0 0 12px; }
+  h1, h2, h3 { text-wrap: balance; line-height: 1.25; }
+  h1 { font-size: clamp(30px, 5vw, 44px); font-weight: 700; margin: 0 0 20px; letter-spacing: -0.015em; }
+  h2 { font-size: clamp(22px, 3.5vw, 28px); font-weight: 700; margin: 0 0 16px; letter-spacing: -0.01em; }
+  h3 { font-size: 17px; font-weight: 700; margin: 0 0 8px; }
+  p { margin: 0 0 16px; max-width: 66ch; }
+  .lede { font-size: 18px; color: var(--ink-soft); max-width: 58ch; }
+  .muted { color: var(--ink-soft); }
+  .mono { font-family: var(--mono); font-size: 0.92em; }
+  a { color: var(--accent); }
+  a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  header.hero { padding-top: 72px; }
+  .hero-tags { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 24px; }
+  .hero-grid-note { display: inline-block; font-family: var(--mono); font-size: 12px; color: var(--ink-soft); border: 1px solid var(--line); border-radius: 3px; padding: 2px 10px; background: var(--surface); text-decoration: none; }
+  .hero-grid-note.live { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); font-weight: 700; }
+  .hero-grid-note.live:hover { background: var(--accent); color: var(--surface); }
+  .tagline { font-family: var(--mono); font-size: 13.5px; letter-spacing: 0.02em; color: var(--accent); margin: -6px 0 22px; }
+
+  /* ---------- Phone mockup ---------- */
+  .phone-wrap { margin-top: 40px; display: flex; justify-content: center; }
+  .phone { width: 260px; border: 1px solid var(--line); border-radius: 28px; background: var(--surface); padding: 10px; box-shadow: 0 1px 0 var(--line); }
+  .phone-screen { border-radius: 20px; background: var(--paper); padding: 18px 16px; min-height: 340px; }
+  .phone-notch { width: 70px; height: 5px; border-radius: 3px; background: var(--line); margin: 0 auto 14px; }
+  .score-ring { width: 96px; height: 96px; margin: 6px auto 10px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 7px solid var(--accent); background: var(--surface); }
+  .score-ring b { font-family: var(--mono); font-size: 30px; font-variant-numeric: tabular-nums; }
+  .phone-label { text-align: center; font-size: 12px; color: var(--ink-soft); margin-bottom: 16px; }
+  .tl-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; font-size: 12px; border-bottom: 1px dashed var(--line); }
+  .tl-row:last-child { border-bottom: none; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 6px; vertical-align: -1px; }
+  .dot.r { background: var(--tl-red); } .dot.a { background: var(--tl-amber); } .dot.g { background: var(--tl-green); }
+  .phone-caption { text-align: center; font-size: 12px; color: var(--ink-soft); font-family: var(--mono); margin-top: 14px; }
+
+  /* ---------- Stats ---------- */
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); margin-top: 32px; }
+  .stat { background: var(--surface); padding: 20px 18px; min-width: 0; }
+  .stat b { display: block; font-size: 30px; font-weight: 700; font-family: var(--mono); font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+  .stat span { font-size: 13px; color: var(--ink-soft); }
+
+  /* ---------- Rule / highlight cards ---------- */
+  .rules { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin-top: 28px; }
+  .rule { background: var(--surface); border: 1px solid var(--line); padding: 18px 20px; }
+  .rule .no { font-family: var(--mono); font-size: 12px; font-weight: 700; color: var(--accent); letter-spacing: 0.08em; display: block; margin-bottom: 8px; }
+  .rule p { margin: 0; font-size: 14px; color: var(--ink-soft); max-width: none; }
+
+  /* ---------- Callout ---------- */
+  .callout { margin: 28px 0 0; background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--accent); padding: 18px 22px; }
+  .callout .label { display: block; font-family: var(--mono); font-size: 11.5px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent); font-weight: 700; margin-bottom: 6px; }
+  .callout p { margin: 0; font-size: 15px; }
+  .callout.stop { border-left-color: var(--stop); }
+  .callout.stop .label { color: var(--stop); }
+
+  /* ---------- Formula block ---------- */
+  .formula { margin-top: 24px; background: var(--surface); border: 1px solid var(--line); padding: 20px 24px; overflow-x: auto; }
+  .formula pre { margin: 0; font-family: var(--mono); font-size: 13.5px; line-height: 2; color: var(--ink); }
+  .formula .cap { color: var(--ink-soft); }
+  .formula .op { color: var(--stop); }
+  .formula .plus { color: var(--good); }
+
+  /* ---------- Axis table ---------- */
+  .route-table { border-collapse: collapse; width: 100%; margin-top: 24px; background: var(--surface); }
+  .route-table th, .route-table td { border: 1px solid var(--line); padding: 10px 14px; font-size: 14px; text-align: left; vertical-align: top; }
+  .route-table th { background: var(--paper); font-size: 12.5px; letter-spacing: 0.06em; color: var(--ink-soft); }
+  .route-table td:first-child { font-weight: 700; white-space: nowrap; }
+  .route-wrap { overflow-x: auto; }
+  .tag { display: inline-block; font-size: 11.5px; font-weight: 700; border-radius: 999px; padding: 1px 10px; white-space: nowrap; }
+  .tag.go { color: var(--good); border: 1px solid var(--good); }
+  .tag.human { color: var(--accent); border: 1px solid var(--accent); }
+
+  /* ---------- Figure / SVG diagram ---------- */
+  .figure { margin-top: 28px; border: 1px solid var(--line); background: var(--surface); }
+  .figure svg { display: block; width: 100%; height: auto; }
+  .figure .cap { font-size: 12.5px; color: var(--ink-soft); padding: 10px 14px; border-top: 1px dashed var(--line); font-family: var(--mono); }
+  .svg-box { fill: var(--surface); stroke: var(--line); }
+  .svg-zone { fill: none; stroke: var(--line); stroke-dasharray: 4 4; }
+  .svg-t { fill: var(--ink); font-family: -apple-system, "Segoe UI", Arial, sans-serif; font-size: 12px; }
+  .svg-t.b { font-weight: 700; }
+  .svg-t.s { fill: var(--ink-soft); font-size: 10.5px; }
+  .svg-t.m { font-family: "SF Mono", Consolas, monospace; font-size: 10px; fill: var(--ink-soft); letter-spacing: 0.06em; }
+  .svg-arrow { stroke: var(--steel); stroke-width: 1.4; fill: none; }
+
+  /* ---------- Score breakdown card ---------- */
+  .record-card { margin-top: 24px; max-width: 560px; background: var(--surface); border: 1px solid var(--accent); border-radius: 2px; box-shadow: 4px 4px 0 var(--accent-soft); padding: 16px 20px; font-family: var(--mono); font-size: 13px; line-height: 1.9; }
+  .record-card .neg { color: var(--stop); }
+  .record-card .pos { color: var(--good); }
+
+  /* ---------- Pipeline (phases) ---------- */
+  .pipeline { counter-reset: step; display: grid; gap: 12px; margin-top: 28px; }
+  .step { background: var(--surface); border: 1px solid var(--line); padding: 18px 20px 18px 64px; position: relative; }
+  .step::before { counter-increment: step; content: counter(step, decimal-leading-zero); position: absolute; left: 20px; top: 18px; font-family: var(--mono); font-size: 15px; font-weight: 700; color: var(--steel); }
+  .step h3 { margin-bottom: 4px; }
+  .step p { margin: 0; font-size: 14.5px; color: var(--ink-soft); max-width: none; }
+  .step.gate { border-left: 4px solid var(--accent); background: linear-gradient(to right, var(--accent-soft), var(--surface) 45%); }
+  .step .badge { display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: 0.1em; color: var(--accent); border: 1px solid var(--accent); border-radius: 999px; padding: 1px 10px; margin-left: 8px; vertical-align: 2px; }
+
+  /* ---------- Secure grid ---------- */
+  .secure { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; margin-top: 28px; }
+  .secure .rule h3 { font-size: 15px; }
+
+  /* ---------- Checklist ---------- */
+  .checks { list-style: none; padding: 0; margin: 24px 0 0; display: grid; gap: 10px; }
+  .checks li { background: var(--surface); border: 1px solid var(--line); padding: 14px 18px 14px 46px; position: relative; font-size: 14.5px; color: var(--ink-soft); }
+  .checks li::before { content: "✓"; position: absolute; left: 18px; top: 12px; color: var(--accent); font-size: 15px; font-weight: 700; }
+  .checks li b { color: var(--ink); }
+
+  /* ---------- Pull quote ---------- */
+  .pull { margin-top: 88px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 40px 0; text-align: center; }
+  .pull p { margin: 0 auto; max-width: 34ch; font-size: clamp(19px, 3vw, 25px); font-weight: 700; line-height: 1.5; text-wrap: balance; }
+
+  /* ---------- CTA ---------- */
+  .cta { margin-top: 88px; border: 1px solid var(--line); border-top: 4px solid var(--accent); background: var(--surface); padding: 40px 32px; text-align: center; }
+  .cta h2 { margin-bottom: 10px; }
+  .cta p { margin: 0 auto 24px; }
+  .cta a.btn { display: inline-block; background: var(--accent); color: #fff; text-decoration: none; font-weight: 700; padding: 12px 32px; border-radius: 3px; font-size: 15px; }
+  footer { margin-top: 56px; font-size: 12.5px; color: var(--ink-soft); text-align: center; line-height: 2; }
+
+  /* ---------- Case navigation ---------- */
+  .case-nav { max-width: 880px; margin: 0 auto; padding: 24px 24px 0; display: flex; justify-content: space-between; align-items: center; font-family: var(--mono); font-size: 13px; }
+  .case-nav a { color: var(--ink); text-decoration: none; }
+  .case-nav a:hover { color: var(--accent); }
+</style>
+</head>
+<body>
+
+<nav class="case-nav" aria-label="Case study navigation">
+  <a href="/">← VangaTech</a>
+  <a href="mailto:info@vangatechai.com">Contact</a>
+</nav>
+
+<main>
+  <header class="hero">
+    <div class="hero-tags">
+      <span class="hero-grid-note">SOLUTION CASE — AI FOOD LABEL SCANNER</span>
+      <a class="hero-grid-note live" href="https://apps.apple.com/tw/app/labelx-scan-label-avoid-risks/id6758542897" target="_blank" rel="noopener">↗ Live on the App Store</a>
+    </div>
+    <p class="eyebrow">Case Study · Consumer Mobile App</p>
+    <h1>Point a phone at a food label. Get a health score in seconds — and the reasoning behind it.</h1>
+    <p class="tagline">"Know the label. Know your body." — LabelX, on the App Store</p>
+    <p class="lede">LabelX turns a photo of a nutrition label into a structured, explainable health assessment: an additive risk profile, a nutrient traffic-light rating, a processing-level classification, and warnings personalized to the user's own conditions and allergens. Built and shipped end to end, from design system to App Store release.</p>
+
+    <div class="phone-wrap" aria-label="Illustrative concept of the result screen, not an actual screenshot">
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="phone-notch"></div>
+          <div class="score-ring"><b>75</b></div>
+          <div class="phone-label">Health Score · sample data</div>
+          <div class="tl-row"><span><span class="dot g"></span>Fiber</span><span>Green</span></div>
+          <div class="tl-row"><span><span class="dot a"></span>Sodium</span><span>Amber</span></div>
+          <div class="tl-row"><span><span class="dot r"></span>Sugar</span><span>Red</span></div>
+          <div class="tl-row"><span><span class="dot a"></span>Sat. fat</span><span>Amber</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="hero-caption" style="text-align:center; font-family:var(--mono); font-size:12px; color:var(--ink-soft); margin-top:10px;">▲ Illustrative concept of the result screen — not an actual app screenshot</div>
+
+    <div class="stats">
+      <div class="stat"><b>4</b><span>analysis axes behind every score</span></div>
+      <div class="stat"><b>3</b><span>languages, localized down to the AI output</span></div>
+      <div class="stat"><b>20+</b><span>screens, one typed-routing codebase</span></div>
+      <div class="stat"><b>0</b><span>times personalization is allowed to change the score</span></div>
+    </div>
+  </header>
+
+  <section>
+    <p class="eyebrow">Before</p>
+    <h2>A label is public information nobody can actually read</h2>
+    <p>A shopper holding a box of cereal runs into three walls at once: <b>vocabulary</b> (a chemical name means nothing without a toxicology background), <b>context</b> (22g of sugar is unremarkable in jam and alarming in a yogurt drink — the number alone is noise), and <b>relevance</b> (someone with kidney disease and someone training for a marathon shouldn't get the same warning from the same label).</p>
+    <p>Most scanner apps fail a fourth way on top of that: they hand back a single number with no justification. A score you can't interrogate is a score you can't trust — and the moment it contradicts a user's intuition once, they stop trusting it entirely.</p>
+    <div class="callout">
+      <span class="label">Product goal</span>
+      <p>Not "score the food." Produce a defensible, auditable, personally relevant verdict — fast enough to use standing in a supermarket aisle.</p>
+    </div>
+  </section>
+
+  <section>
+    <p class="eyebrow">Solution</p>
+    <h2>A photo in, a typed verdict out</h2>
+    <p>The user photographs a label or picks one from the library. The client compresses the image and sends it to the backend; the AI layer returns a fully typed analysis object in a few seconds on an ordinary mobile connection. Every score comes with its own audit trail: an itemized breakdown of every deduction, the literal arithmetic behind the final number, the one to three factors that actually moved it, and what would have to change for the product to score better.</p>
+
+    <div class="record-card" role="img" aria-label="Sample score breakdown">
+      Base score: 100<br>
+      <span class="neg">− 10</span> traffic lights (sugar: red)<br>
+      <span class="neg">− 15</span> additives (2 mid-risk, position-weighted)<br>
+      <span class="pos">+ 0</span> health bonus (capped — sugar red-flagged)<br>
+      <b>= 75</b> &nbsp;<span class="mono" style="color:var(--ink-soft);">confidence: high · data quality: complete</span>
+    </div>
+    <p class="muted" style="font-size:13px; margin-top:10px;">▲ The kind of arithmetic string attached to every score (sample). Nothing in the result is a number without a reason.</p>
+
+    <h3 style="margin-top:40px; font-size:19px;">Four axes, one number</h3>
+    <div class="route-wrap">
+    <table class="route-table">
+      <tr><th>Axis</th><th>What it captures</th></tr>
+      <tr><td>Additives</td><td>Synthetic additives only, classified by risk tier, with IARC carcinogenicity group and regulatory notes.</td></tr>
+      <tr><td>Concerning ingredients</td><td>Hydrogenated oils, high-fructose syrup, refined sugar load, nitrates in processed meat, excess sodium.</td></tr>
+      <tr><td>Nutrient traffic lights</td><td>Sugar, sodium, saturated fat, fiber — rated red / amber / green per 100g or 100mL.</td></tr>
+      <tr><td>NOVA processing class</td><td>1 (unprocessed) through 4 (ultra-processed).</td></tr>
+    </table>
+    </div>
+  </section>
+
+  <section>
+    <p class="eyebrow">System Architecture</p>
+    <h2>Four zones, one typed contract running through all of them</h2>
+    <p>The camera captures and compresses the image on-device, a serverless API layer authenticates the request and checks entitlement, the AI layer routes to the right model tier and enforces a strict response schema, and the result is persisted alongside the original image.</p>
+
+    <div class="figure">
+      <svg viewBox="0 0 680 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Architecture diagram: mobile client, serverless API layer, AI analysis layer, and persistence">
+        <!-- Client zone -->
+        <rect class="svg-zone" x="12" y="30" width="152" height="250" rx="3"/>
+        <text class="svg-t m" x="22" y="22">MOBILE CLIENT</text>
+        <rect class="svg-box" x="26" y="52" width="126" height="46" rx="2" stroke-width="1"/>
+        <text class="svg-t b" x="36" y="72">Camera / library</text>
+        <text class="svg-t s" x="36" y="88">capture input</text>
+        <path class="svg-arrow" d="M89 98 L89 116" marker-end="url(#a3)"/>
+        <rect class="svg-box" x="26" y="120" width="126" height="46" rx="2" stroke-width="1"/>
+        <text class="svg-t b" x="36" y="140">Compression</text>
+        <text class="svg-t s" x="36" y="156">resize + re-encode</text>
+        <rect class="svg-box" x="26" y="196" width="126" height="46" rx="2" stroke-width="1"/>
+        <text class="svg-t b" x="36" y="216">Local state store</text>
+        <text class="svg-t s" x="36" y="232">history · profile</text>
+
+        <!-- API zone -->
+        <rect class="svg-zone" x="182" y="30" width="152" height="250" rx="3"/>
+        <text class="svg-t m" x="192" y="22">SERVERLESS API</text>
+        <rect class="svg-box" x="196" y="52" width="126" height="46" rx="2" stroke-width="1"/>
+        <text class="svg-t b" x="206" y="72">Auth + entitlement</text>
+        <text class="svg-t s" x="206" y="88">token, subscription</text>
+        <path class="svg-arrow" d="M259 98 L259 116" marker-end="url(#a3)"/>
+        <rect class="svg-box" x="196" y="120" width="126" height="46" rx="2" stroke-width="1"/>
+        <text class="svg-t b" x="206" y="140">Analysis orchestrator</text>
+        <path class="svg-arrow" d="M259 166 L259 184" marker-end="url(#a3)"/>
+        <rect class="svg-box" x="196" y="188" width="126" height="46" rx="2" stroke-width="1"/>
+        <text class="svg-t b" x="206" y="208">Image persistence</text>
+
+        <!-- AI zone -->
+        <rect class="svg-zone" x="352" y="30" width="152" height="140" rx="3"/>
+        <text class="svg-t m" x="362" y="22">AI ANALYSIS</text>
+        <rect class="svg-box" x="366" y="52" width="126" height="42" rx="2" stroke-width="1"/>
+        <text class="svg-t b" x="376" y="70">Model router</text>
+        <text class="svg-t s" x="376" y="85">fast tier / pro tier</text>
+        <path class="svg-arrow" d="M429 94 L429 108" marker-end="url(#a3)"/>
+        <rect class="svg-box" x="366" y="112" width="126" height="46" rx="2" stroke-width="1"/>
+        <text class="svg-t b" x="376" y="132">Schema-constrained</text>
+        <text class="svg-t s" x="376" y="148">structured output</text>
+
+        <!-- Data zone -->
+        <rect class="svg-zone" x="522" y="30" width="146" height="140" rx="3"/>
+        <text class="svg-t m" x="532" y="22">PERSISTENCE</text>
+        <rect class="svg-box" x="536" y="52" width="118" height="42" rx="2" stroke-width="1"/>
+        <text class="svg-t b" x="546" y="70">Document DB</text>
+        <text class="svg-t s" x="546" y="85">products · users · scans</text>
+        <rect class="svg-box" x="536" y="112" width="118" height="42" rx="2" stroke-width="1"/>
+        <text class="svg-t b" x="546" y="130">Object storage</text>
+        <text class="svg-t s" x="546" y="145">label images</text>
+
+        <!-- cross-zone flows -->
+        <path class="svg-arrow" d="M152 143 L192 143" marker-end="url(#a3)"/>
+        <path class="svg-arrow" d="M322 143 L362 90" marker-end="url(#a3)"/>
+        <path class="svg-arrow" d="M492 133 L532 68" marker-end="url(#a3)"/>
+        <path class="svg-arrow" d="M322 211 L536 133" marker-end="url(#a3)"/>
+        <path class="svg-arrow" d="M429 158 L259 178 L259 174" marker-end="url(#a3)"/>
+        <text class="svg-t m" x="340" y="266" text-anchor="middle" fill="var(--accent)">TYPED RESULT FLOWS BACK TO THE CLIENT UNCHANGED</text>
+
+        <defs>
+          <marker id="a3" markerWidth="7" markerHeight="7" refX="5" refY="3.5" orient="auto">
+            <path d="M0,0 L6,3.5 L0,7 z" fill="var(--steel)"/>
+          </marker>
+        </defs>
+      </svg>
+      <div class="cap">▲ Simplified from the project's own architecture diagram</div>
+    </div>
+
+    <h3 style="margin-top:40px; font-size:19px;">Stack decisions and why</h3>
+    <div class="route-wrap">
+    <table class="route-table">
+      <tr><th>Layer</th><th>Choice</th><th>Rationale</th></tr>
+      <tr><td>Platform</td><td>iOS</td><td>App Store distribution, native camera and permission integration.</td></tr>
+      <tr><td>Client stack</td><td>React Native · Expo · TypeScript</td><td>A modern managed-native-module pipeline for camera, haptics, sharing and localization.</td></tr>
+      <tr><td>Routing</td><td>File-based, typed routes</td><td>A renamed screen becomes a build error, not a runtime crash.</td></tr>
+      <tr><td>Type system</td><td>TypeScript end to end</td><td>The AI response schema, the domain model, and the UI props share one contract.</td></tr>
+      <tr><td>Backend</td><td>Serverless functions</td><td>Scan traffic is spiky; per-request billing and automatic scaling fit better than an always-on server.</td></tr>
+      <tr><td>Database</td><td>Managed document store</td><td>Analysis results are deeply nested, schema-flexible documents — a natural fit.</td></tr>
+      <tr><td>Auth</td><td>Sign in with Apple, plus Google Sign-In</td><td>Apple's social-login requirement, satisfied alongside a second provider.</td></tr>
+    </table>
+    </div>
+    <p class="muted" style="font-size:13px; margin-top:14px;">All project identifiers, endpoint URLs, OAuth client IDs, and bundle identifiers have been omitted from this page.</p>
+  </section>
+
+  <section>
+    <p class="eyebrow">Engineering Highlights</p>
+    <h2>The hard part of an AI product isn't calling the API</h2>
+    <div class="rules">
+      <div class="rule">
+        <span class="no">01</span>
+        <h3>A deterministic scoring engine</h3>
+        <p>The score is not the model's opinion — it's a rule system the AI is instructed to apply, so the same label produces a comparable score every time and every deduction traces to a rule. Position weighting stops a trace ingredient from tanking a score; context rules stop fermented and traditional foods from being penalized like instant noodles; anti-gaming guards stop a sugar-loaded drink from buying back points with a vitamin fortification claim.</p>
+      </div>
+      <div class="rule">
+        <span class="no">02</span>
+        <h3>Schema-constrained AI output</h3>
+        <p>Every request carries a strict response schema covering product identity, additives, nutrition, NOVA class, traffic lights, and the score breakdown. The client parses a guaranteed shape — no regex scraping, no defensive string surgery. The schema also forces the model to declare its own uncertainty, so a blurry photo produces a flagged low-confidence answer instead of a confident wrong one.</p>
+      </div>
+      <div class="rule">
+        <span class="no">03</span>
+        <h3>Two-tier model routing</h3>
+        <p>Requests carry a mode — a fast, cheaper tier for routine scoring, a stronger tier for detailed explanation. Model selection happens server-side against a hard allowlist, so a client can't request an arbitrary model string. It's a cost control and a security control at once.</p>
+      </div>
+      <div class="rule">
+        <span class="no">04</span>
+        <h3>Localization reaching into the AI layer</h3>
+        <p>Three languages, including full Traditional-vs-Simplified Chinese enforcement. The response schema instructs the model to produce names, warnings, and recommendations directly in the target language — nothing is machine-translated after the fact, so nutritional terminology stays correct in each locale.</p>
+      </div>
+      <div class="rule">
+        <span class="no">05</span>
+        <h3>A security model where the client can't lie</h3>
+        <p>Database rules refuse client-side writes to privileged fields outright. Scan records are writable only by backend functions running with admin privileges, and subscription/entitlement fields live where the client has no write path at all — so a modified client can't forge its own subscription state.</p>
+      </div>
+      <div class="rule">
+        <span class="no">06</span>
+        <h3>An image pipeline that fails soft</h3>
+        <p>Photos are resized and re-encoded before upload for a large size reduction with no meaningful loss in label legibility. If compression errors out, the original image uploads rather than failing the scan — and a hard size ceiling catches an oversized payload with a helpful message instead of a server timeout.</p>
+      </div>
+    </div>
+
+    <div class="pull">
+      <p>A photo, an itemized score, and one hard rule: personalization never touches the number.</p>
+    </div>
+
+    <h3 style="font-size:19px;">Personalization without score contamination</h3>
+    <p>It's tempting to fold a user's health profile into the score — a diabetic sees a lower number on a sugary product, done. LabelX does the opposite, and the AI prompt enforces it explicitly: personalization must never modify the health score.</p>
+    <p>A score that shifts per person isn't a score, it's an opinion — it can't be compared across users, can't be cached or shared, and turns a history trend line meaningless the moment the user edits their profile. So the two stay structurally separate: the score is objective and shareable, and the personalized layer is a distinct advisory surface — condition-specific warnings, an individual risk assessment, a tailored recommendation. A product can score 85 and still carry a red personal warning for sesame. Both are true, and neither corrupts the other.</p>
+  </section>
+
+  <section>
+    <p class="eyebrow">How It Was Built</p>
+    <h2>Prove the hard part first, monetize last</h2>
+    <p>The build ran in overlapping phases, but the sequence of technical milestones was deliberate.</p>
+    <div class="pipeline">
+      <div class="step">
+        <h3>Design system extraction</h3>
+        <p>The visual language was pulled into a standalone component workspace — color system, typography, radius scale, light/dark theming — and settled in a browser before it had to survive a mobile build cycle.</p>
+      </div>
+      <div class="step">
+        <h3>The analysis backend</h3>
+        <p>The riskiest part went first: serverless endpoints, the response schema, the scoring rules, and the data model, validated independently of any UI. If the analysis quality wasn't achievable, nothing else mattered.</p>
+      </div>
+      <div class="step">
+        <h3>The application</h3>
+        <p>Navigation shell, camera and library capture, result presentation, history with search and filtering, and the home dashboard — with local state persistence so the app stays useful on intermittent connectivity.</p>
+      </div>
+      <div class="step">
+        <h3>Identity and personalization</h3>
+        <p>Sign in with Apple and Google Sign-In, the onboarding questionnaire, profile persistence, and the personalized analysis layer. A reinstalling user recovers subscription state and preferences from the server rather than losing them.</p>
+      </div>
+      <div class="step">
+        <h3>Localization and responsive layout</h3>
+        <p>Three-language rollout including native permission strings, plus a full responsive pass across device sizes and orientations.</p>
+      </div>
+      <div class="step">
+        <h3>Monetization</h3>
+        <p>Paywall placement, entitlement synchronization after login, and server-side entitlement verification — never client-side trust.</p>
+      </div>
+      <div class="step gate">
+        <h3>Release engineering<span class="badge">SHIPPED</span></h3>
+        <p>Signing and provisioning, release-mode builds, store metadata and assets, and the submission pipeline through to a live App Store release — plus the runbooks to reproduce all of it.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <p class="eyebrow">Delivery Metrics</p>
+    <h2>What actually shipped</h2>
+    <div class="route-wrap">
+    <table class="route-table">
+      <tr><th>Area</th><th>Figure</th></tr>
+      <tr><td>Application code</td><td>~18,700 lines of TypeScript across screens, state, utilities, and service layer</td></tr>
+      <tr><td>Backend code</td><td>12 serverless endpoints, ~2,300 lines</td></tr>
+      <tr><td>Screens / routes</td><td>20+, file-based with compile-time-checked navigation</td></tr>
+      <tr><td>UI components</td><td>25+ purpose-built components across home, result, and shared layers</td></tr>
+      <tr><td>Localization</td><td>3 languages · ~2,400 dictionary lines · localized native permission strings</td></tr>
+      <tr><td>Scoring engine</td><td>4 penalty axes · 15 bonus categories · position weighting · context rules · anti-gaming guards</td></tr>
+      <tr><td>Auth methods</td><td>Sign in with Apple · Google Sign-In, with account deletion compliance</td></tr>
+      <tr><td>Monetization</td><td>Subscription paywall, server-verified entitlements — NT$320/month or NT$2,990/year</td></tr>
+      <tr><td>Store category</td><td>Utilities · Age rating 16+</td></tr>
+      <tr><td>Release state</td><td>Live on the App Store</td></tr>
+    </table>
+    </div>
+  </section>
+
+  <section>
+    <p class="eyebrow">What This Demonstrates</p>
+    <h2>The surface a modern consumer AI product actually needs</h2>
+    <ul class="checks">
+      <li><b>AI product engineering beyond calling an API</b> — schema-constrained output, a deterministic rule layer on top of a probabilistic model, explainability as a first-class feature, cost-tiered routing, and an instrumented harness for measuring prompt changes rather than guessing at them.</li>
+      <li><b>Serverless backend architecture</b> — scale-to-zero economics, secret management, and a security-rule model where a compromised client can't escalate privileges.</li>
+      <li><b>Identity and compliance</b> — Apple and Google sign-in, session persistence, cross-device state recovery, and account deletion — the requirements that block App Store review when they're an afterthought.</li>
+      <li><b>Monetization done right</b> — paywall integration with server-side entitlement verification, not client-side trust.</li>
+      <li><b>Internationalization done properly</b> — locale awareness reaching into the AI output layer, not just a translation pass at the end.</li>
+      <li><b>Release engineering</b> — signing, provisioning, store assets, and a submission pipeline that reached a live release, with documentation to reproduce it.</li>
+      <li><b>Design-to-code discipline</b> — a design system extracted into a real, buildable token layer before implementation, so the shipped product matches the design instead of approximating it.</li>
+    </ul>
+  </section>
+
+  <div class="cta">
+    <h2>Building a consumer app with an AI layer at its core?</h2>
+    <p class="muted">Structured, explainable AI output; a scoring or rules engine that has to hold up under real-world input;<br>identity, monetization, and release engineering that actually reaches the App Store.</p>
+    <a class="btn" href="mailto:info@vangatechai.com">Tell us what you're building</a>
+    <div style="margin-top:16px;">
+      <a href="https://apps.apple.com/tw/app/labelx-scan-label-avoid-risks/id6758542897" target="_blank" rel="noopener" style="font-family:var(--mono); font-size:13px;">↗ See LabelX on the App Store</a>
+    </div>
+  </div>
+
+  <footer>
+    All screen mockups on this page are illustrative concepts, not actual app screenshots — the App Store listing itself doesn't have screenshots uploaded yet.<br>
+    Project identifiers, endpoint URLs, OAuth client IDs, and bundle identifiers have been omitted.
+  </footer>
+</main>
+
+</body>
+</html>
