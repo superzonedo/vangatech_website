@@ -1,0 +1,803 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Import Invoice Automation — VangaTech Case Study</title>
+<meta name="description" content="An import-invoice automation system: mailbox intake, field extraction, part-number matching against history, tiered tariff-rate lookup, Excel write-back, and a human confirmation gate.">
+<meta property="og:title" content="Import Invoice Automation — VangaTech">
+<meta property="og:description" content="See how VangaTech turns supplier invoices arriving by email into structured rows in a company's existing Excel reports — with every uncertain field marked for a human.">
+<meta property="og:type" content="article">
+<style>
+  :root {
+    --paper: #F6F8F9;
+    --surface: #FFFFFF;
+    --ink: #1C2430;
+    --ink-soft: #55616F;
+    --line: #D8DEE4;
+    --accent: #17646F;          /* harbour teal — from the ink on an import declaration */
+    --accent-soft: #DCEAEC;
+    --steel: #3D5A73;
+    --tier1: #2E7D4F;           /* confirmed history — trusted */
+    --tier2: #2F6E8F;           /* similar record — probable */
+    --tier3: #B7791F;           /* AI suggestion — unconfirmed */
+    --cell-fill: #DCE8F4;
+    --cell-grey: #E3E5E7;
+    --good: #2E7D4F;
+    --warn: #B7791F;
+    --stop: #A63D33;
+    --mono: "SF Mono", "Cascadia Code", Consolas, "Courier New", monospace;
+    --sans: -apple-system, "Segoe UI", "Helvetica Neue", Arial, "PingFang TC", "Noto Sans TC", sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #141A21;
+      --surface: #1C242E;
+      --ink: #E8EDF2;
+      --ink-soft: #9AA7B4;
+      --line: #33404D;
+      --accent: #58B0BD;
+      --accent-soft: #1B333A;
+      --steel: #7FA3C2;
+      --tier1: #5CBA8A;
+      --tier2: #6FA6C8;
+      --tier3: #D9A54C;
+      --cell-fill: #24384D;
+      --cell-grey: #333A42;
+      --good: #5CBA8A;
+      --warn: #D9A54C;
+      --stop: #D9776B;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #141A21;
+    --surface: #1C242E;
+    --ink: #E8EDF2;
+    --ink-soft: #9AA7B4;
+    --line: #33404D;
+    --accent: #58B0BD;
+    --accent-soft: #1B333A;
+    --steel: #7FA3C2;
+    --tier1: #5CBA8A;
+    --tier2: #6FA6C8;
+    --tier3: #D9A54C;
+    --cell-fill: #24384D;
+    --cell-grey: #333A42;
+    --good: #5CBA8A;
+    --warn: #D9A54C;
+    --stop: #D9776B;
+  }
+  :root[data-theme="light"] {
+    --paper: #F6F8F9;
+    --surface: #FFFFFF;
+    --ink: #1C2430;
+    --ink-soft: #55616F;
+    --line: #D8DEE4;
+    --accent: #17646F;
+    --accent-soft: #DCEAEC;
+    --steel: #3D5A73;
+    --tier1: #2E7D4F;
+    --tier2: #2F6E8F;
+    --tier3: #B7791F;
+    --cell-fill: #DCE8F4;
+    --cell-grey: #E3E5E7;
+    --good: #2E7D4F;
+    --warn: #B7791F;
+    --stop: #A63D33;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--sans);
+    line-height: 1.7;
+    font-size: 16px;
+  }
+  main { max-width: 880px; margin: 0 auto; padding: 0 24px 96px; }
+  section { margin-top: 88px; }
+
+  .eyebrow {
+    font-size: 12px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--accent);
+    font-weight: 600;
+    margin: 0 0 12px;
+  }
+  h1, h2, h3 { text-wrap: balance; line-height: 1.25; }
+  h1 { font-size: clamp(30px, 5vw, 44px); font-weight: 700; margin: 0 0 20px; letter-spacing: -0.015em; }
+  h2 { font-size: clamp(22px, 3.5vw, 28px); font-weight: 700; margin: 0 0 16px; letter-spacing: -0.01em; }
+  h3 { font-size: 17px; font-weight: 700; margin: 0 0 8px; }
+  p { margin: 0 0 16px; max-width: 66ch; }
+  .lede { font-size: 18px; color: var(--ink-soft); max-width: 58ch; }
+  .muted { color: var(--ink-soft); }
+  .mono { font-family: var(--mono); font-size: 0.92em; }
+  a { color: var(--accent); }
+  a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  /* ---------- Hero ---------- */
+  header.hero { padding-top: 72px; }
+  .hero-tags { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 24px; }
+  .hero-grid-note {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--ink-soft);
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    padding: 2px 10px;
+    background: var(--surface);
+  }
+  .hero-grid-note.live {
+    color: var(--accent);
+    border-color: var(--accent);
+    background: var(--accent-soft);
+    font-weight: 700;
+  }
+
+  /* Animated demo row: invoice fields land one by one */
+  .hero-demo {
+    margin-top: 40px;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    overflow-x: auto;
+  }
+  .hero-demo table { border-collapse: collapse; width: 100%; min-width: 680px; }
+  .hero-demo th, .hero-demo td {
+    border: 1px solid var(--line);
+    padding: 7px 12px;
+    font-size: 13px;
+    text-align: right;
+    font-family: var(--mono);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  .hero-demo th {
+    background: var(--paper);
+    color: var(--ink-soft);
+    font-weight: 600;
+    text-align: center;
+  }
+  .hero-demo td.pn { text-align: left; font-weight: 600; }
+  .hero-demo td.fill { background: var(--cell-fill); opacity: 0; animation: cellin 0.4s ease forwards; }
+  .hero-demo td.fill:nth-child(2) { animation-delay: 0.3s; }
+  .hero-demo td.fill:nth-child(3) { animation-delay: 0.5s; }
+  .hero-demo td.fill:nth-child(4) { animation-delay: 0.7s; }
+  .hero-demo td.fill:nth-child(5) { animation-delay: 0.9s; }
+  .hero-demo td.fill:nth-child(6) { animation-delay: 1.1s; }
+  .hero-demo td.fill:nth-child(7) { animation-delay: 1.3s; }
+  .hero-demo td.pending { background: transparent; opacity: 0; animation: cellin 0.4s ease 1.7s forwards; }
+  @keyframes cellin { to { opacity: 1; } }
+  @media (prefers-reduced-motion: reduce) {
+    .hero-demo td.fill, .hero-demo td.pending { animation: none; opacity: 1; }
+  }
+  .hero-caption {
+    font-size: 13px;
+    color: var(--ink-soft);
+    padding: 10px 14px;
+    border-top: 1px dashed var(--line);
+    font-family: var(--mono);
+  }
+
+  /* ---------- Stats ---------- */
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); margin-top: 32px; }
+  .stat { background: var(--surface); padding: 20px 18px; }
+  .stat b { display: block; font-size: 30px; font-weight: 700; font-family: var(--mono); font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+  .stat span { font-size: 13px; color: var(--ink-soft); }
+
+  /* ---------- Pipeline ---------- */
+  .pipeline { counter-reset: step; display: grid; gap: 12px; margin-top: 28px; }
+  .step {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    padding: 18px 20px 18px 64px;
+    position: relative;
+  }
+  .step::before {
+    counter-increment: step;
+    content: counter(step, decimal-leading-zero);
+    position: absolute;
+    left: 20px; top: 18px;
+    font-family: var(--mono);
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--steel);
+  }
+  .step h3 { margin-bottom: 4px; }
+  .step p { margin: 0; font-size: 14.5px; color: var(--ink-soft); max-width: none; }
+  .step.gate { border-left: 4px solid var(--accent); background: linear-gradient(to right, var(--accent-soft), var(--surface) 45%); }
+  .step .badge {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    color: var(--accent);
+    border: 1px solid var(--accent);
+    border-radius: 999px;
+    padding: 1px 10px;
+    margin-left: 8px;
+    vertical-align: 2px;
+  }
+
+  /* ---------- Rule cards ---------- */
+  .rules { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin-top: 28px; }
+  .rule { background: var(--surface); border: 1px solid var(--line); padding: 18px 20px; }
+  .rule .no {
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--accent);
+    letter-spacing: 0.08em;
+    display: block;
+    margin-bottom: 8px;
+  }
+  .rule p { margin: 0; font-size: 14px; color: var(--ink-soft); max-width: none; }
+
+  /* ---------- Callout ---------- */
+  .callout {
+    margin: 28px 0 0;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-left: 4px solid var(--accent);
+    padding: 18px 22px;
+  }
+  .callout .label {
+    display: block;
+    font-family: var(--mono);
+    font-size: 11.5px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent);
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+  .callout p { margin: 0; font-size: 15px; }
+  .callout.stop { border-left-color: var(--stop); }
+  .callout.stop .label { color: var(--stop); }
+
+  /* ---------- Diagram wrapper ---------- */
+  .figure { margin-top: 28px; border: 1px solid var(--line); background: var(--surface); }
+  .figure svg { display: block; width: 100%; height: auto; }
+  .figure .cap { font-size: 12.5px; color: var(--ink-soft); padding: 10px 14px; border-top: 1px dashed var(--line); font-family: var(--mono); }
+  .svg-box { fill: var(--surface); stroke: var(--line); }
+  .svg-zone { fill: none; stroke: var(--line); stroke-dasharray: 4 4; }
+  .svg-t { fill: var(--ink); font-family: -apple-system, "Segoe UI", Arial, sans-serif; font-size: 12px; }
+  .svg-t.b { font-weight: 700; }
+  .svg-t.s { fill: var(--ink-soft); font-size: 10.5px; }
+  .svg-t.m { font-family: "SF Mono", Consolas, monospace; font-size: 10px; fill: var(--ink-soft); letter-spacing: 0.08em; }
+  .svg-arrow { stroke: var(--steel); stroke-width: 1.4; fill: none; }
+  .svg-arrow.loop { stroke: var(--accent); stroke-dasharray: 3 3; }
+
+  /* ---------- Before / after sheets ---------- */
+  .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 28px; }
+  @media (max-width: 720px) { .compare { grid-template-columns: 1fr; } }
+  .sheet { border: 1px solid var(--line); background: var(--surface); min-width: 0; }
+  .sheet-label { padding: 10px 14px; font-size: 13px; font-weight: 700; border-bottom: 1px solid var(--line); }
+  .sheet-label.bad { color: var(--warn); }
+  .sheet-label.good { color: var(--good); }
+  .sheet-scroll { overflow-x: auto; }
+  .sheet table { border-collapse: collapse; width: 100%; min-width: 380px; }
+  .sheet th, .sheet td {
+    border: 1px solid var(--line);
+    font-family: var(--mono);
+    font-size: 12px;
+    padding: 5px 9px;
+    text-align: right;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+  .sheet th { background: var(--paper); color: var(--ink-soft); text-align: center; font-weight: 600; }
+  .sheet td.pn { text-align: left; font-weight: 600; }
+  .sheet td.f { background: var(--cell-fill); }
+  .sheet td.g { background: var(--cell-grey); color: var(--ink-soft); }
+  .sheet td.blank { color: var(--ink-soft); }
+  .sheet td.wrong { background: var(--cell-grey); position: relative; }
+  .sheet td.wrong::after { content: "✕"; color: var(--warn); font-size: 9px; position: absolute; top: 1px; right: 2px; }
+  .sheet-note { font-size: 12.5px; color: var(--ink-soft); padding: 10px 14px; border-top: 1px dashed var(--line); }
+
+  /* ---------- Source tags ---------- */
+  .srctag {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    border-radius: 2px;
+    padding: 1px 7px;
+    white-space: nowrap;
+  }
+  .srctag.t1 { color: var(--tier1); border: 1px solid var(--tier1); }
+  .srctag.t2 { color: var(--tier2); border: 1px solid var(--tier2); }
+  .srctag.t3 { color: var(--tier3); border: 1px solid var(--tier3); }
+
+  .record-card {
+    margin-top: 24px;
+    max-width: 560px;
+    background: var(--surface);
+    border: 1px solid var(--accent);
+    border-radius: 2px;
+    box-shadow: 4px 4px 0 var(--accent-soft);
+    padding: 16px 20px;
+    font-family: var(--mono);
+    font-size: 13px;
+    line-height: 1.9;
+  }
+
+  /* ---------- Tables ---------- */
+  .route-table { border-collapse: collapse; width: 100%; margin-top: 24px; background: var(--surface); }
+  .route-table th, .route-table td { border: 1px solid var(--line); padding: 10px 14px; font-size: 14px; text-align: left; vertical-align: top; }
+  .route-table th { background: var(--paper); font-size: 12.5px; letter-spacing: 0.06em; color: var(--ink-soft); }
+  .route-table td:first-child { font-weight: 700; white-space: nowrap; }
+  .route-wrap { overflow-x: auto; }
+  .tag { display: inline-block; font-size: 11.5px; font-weight: 700; border-radius: 999px; padding: 1px 10px; white-space: nowrap; }
+  .tag.go { color: var(--good); border: 1px solid var(--good); }
+  .tag.human { color: var(--accent); border: 1px solid var(--accent); }
+
+  /* ---------- Checklist ---------- */
+  .checks { list-style: none; padding: 0; margin: 24px 0 0; display: grid; gap: 10px; }
+  .checks li {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    padding: 14px 18px 14px 46px;
+    position: relative;
+    font-size: 14.5px;
+    color: var(--ink-soft);
+  }
+  .checks li::before {
+    content: "☐";
+    position: absolute;
+    left: 18px; top: 12px;
+    color: var(--accent);
+    font-size: 16px;
+  }
+  .checks li b { color: var(--ink); }
+
+  /* ---------- Security ---------- */
+  .secure { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; margin-top: 28px; }
+  .secure .rule h3 { font-size: 15px; }
+
+  /* ---------- Pull quote ---------- */
+  .pull {
+    margin-top: 88px;
+    border-top: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+    padding: 40px 0;
+    text-align: center;
+  }
+  .pull p {
+    margin: 0 auto;
+    max-width: 30ch;
+    font-size: clamp(19px, 3vw, 25px);
+    font-weight: 700;
+    line-height: 1.5;
+    text-wrap: balance;
+  }
+
+  /* ---------- CTA ---------- */
+  .cta {
+    margin-top: 88px;
+    border: 1px solid var(--line);
+    border-top: 4px solid var(--accent);
+    background: var(--surface);
+    padding: 40px 32px;
+    text-align: center;
+  }
+  .cta h2 { margin-bottom: 10px; }
+  .cta p { margin: 0 auto 24px; }
+  .cta a.btn {
+    display: inline-block;
+    background: var(--accent);
+    color: #fff;
+    text-decoration: none;
+    font-weight: 700;
+    padding: 12px 32px;
+    border-radius: 3px;
+    font-size: 15px;
+  }
+  footer { margin-top: 56px; font-size: 12.5px; color: var(--ink-soft); text-align: center; line-height: 2; }
+
+  /* ---------- Case navigation ---------- */
+  .case-nav {
+    max-width: 880px;
+    margin: 0 auto;
+    padding: 24px 24px 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: var(--mono);
+    font-size: 13px;
+  }
+  .case-nav a { color: var(--ink); text-decoration: none; }
+  .case-nav a:hover { color: var(--accent); }
+</style>
+</head>
+<body>
+
+<nav class="case-nav" aria-label="Case study navigation">
+  <a href="/">← VangaTech</a>
+  <a href="mailto:info@vangatechai.com">Contact</a>
+</nav>
+
+<main>
+  <header class="hero">
+    <div class="hero-tags">
+      <span class="hero-grid-note">SOLUTION CASE — IMPORT INVOICE AUTOMATION</span>
+      <span class="hero-grid-note live">IN PROGRESS · DESIGN AGREED</span>
+    </div>
+    <p class="eyebrow">Case Study · Import &amp; Trading Company</p>
+    <h1>The invoice arrives by email. The system reads it, files it, and tells you exactly what it isn't sure about.</h1>
+    <p class="lede">An import-invoice automation system built for a Taiwanese trading company: intake from a designated mailbox, field extraction from PDF and scanned invoices, part-number matching against history, tiered tariff-rate lookup, and write-back into the Excel reports the company already uses. Staff handle exceptions and the final sign-off — nothing else.</p>
+
+    <div class="hero-demo" aria-label="Illustration of invoice fields being extracted into report columns">
+      <table>
+        <tr>
+          <th style="text-align:left">Part No.</th><th>Invoice</th><th>Qty</th><th>Unit Price</th><th>Weight</th><th>Origin</th><th>Duty rate</th>
+        </tr>
+        <tr>
+          <td class="pn">TW-4821-K</td>
+          <td class="fill">INV-90341</td>
+          <td class="fill">1,200</td>
+          <td class="fill">4.85</td>
+          <td class="fill">38.4 kg</td>
+          <td class="fill">JP</td>
+          <td class="fill">7.5%</td>
+        </tr>
+        <tr>
+          <td class="pn">TW-4822-N</td>
+          <td class="fill">INV-90341</td>
+          <td class="fill">300</td>
+          <td class="fill">11.20</td>
+          <td class="fill">9.1 kg</td>
+          <td class="fill">JP</td>
+          <td class="pending"><span class="srctag t3">AI · UNCONFIRMED</span></td>
+        </tr>
+      </table>
+      <div class="hero-caption">▲ Row one matched a confirmed history record. Row two is a new part number — the rate is a suggestion, and it says so (sample data)</div>
+    </div>
+
+    <div class="stats">
+      <div class="stat"><b>5</b><span>stages from mailbox to report, each independently traceable</span></div>
+      <div class="stat"><b>3</b><span>tiers checked before AI is asked anything</span></div>
+      <div class="stat"><b>2</b><span>permission zones, deliberately kept apart</span></div>
+      <div class="stat"><b>0</b><span>AI suggestions treated as final data</span></div>
+    </div>
+  </header>
+
+  <section>
+    <p class="eyebrow">Before</p>
+    <h2>The problem was never a missing spreadsheet</h2>
+    <p>The company already had its Excel reports, and they worked. The bottleneck sat upstream: getting data <em>out</em> of emails and attachments and <em>into</em> those reports was almost entirely manual. Someone opened each supplier invoice, keyed in line items one by one, searched back through history to see whether a part number had been logged before, looked up the current exchange rate, and then decided which tariff rate to trust.</p>
+    <p>Each of those steps is slow, and each of them fails quietly when the day gets busy:</p>
+    <div class="rules">
+      <div class="rule">
+        <h3>Line-by-line data entry</h3>
+        <p>Invoices were keyed in by hand — which means items get skipped, mistyped, or entered twice with nobody noticing until reconciliation.</p>
+      </div>
+      <div class="rule">
+        <h3>New part numbers stall the flow</h3>
+        <p>When a part number appeared for the first time, the process jammed on a question nobody owned: should this be recorded yet, or not?</p>
+      </div>
+      <div class="rule">
+        <h3>Tariff rates lived in memory</h3>
+        <p>Rates came from digging through past declarations and personal experience. Where a number came from — and how much to trust it — was not visible on the page.</p>
+      </div>
+      <div class="rule">
+        <h3>Exchange rates drift</h3>
+        <p>FX had to be looked up and updated separately. Easy to forget, and every time it's forgotten the cost analysis quietly stops being consistent.</p>
+      </div>
+    </div>
+    <div class="callout">
+      <span class="label">Where the line is drawn</span>
+      <p>This system does not replace customs judgment. It automates the data handling that can be standardized, so that human attention lands on the exceptions that actually need a decision.</p>
+    </div>
+  </section>
+
+  <section>
+    <p class="eyebrow">Solution</p>
+    <h2>Five stages, one human gate</h2>
+    <p>Work that used to be scattered across an inbox, a browser and a spreadsheet becomes one traceable chain. Each stage is independent and re-runnable, so a failure in one doesn't contaminate the others — and what staff finally see is data that has already been organized, with its status and source attached.</p>
+    <div class="pipeline">
+      <div class="step">
+        <h3>Intake from a designated mailbox</h3>
+        <p>Supplier invoices arriving as PDF or image attachments are picked up from one specified mailbox. Nothing else in the inbox is touched.</p>
+      </div>
+      <div class="step">
+        <h3>Read the invoice, split out the fields</h3>
+        <p>Invoice number, description, quantity, unit price, weight and country of origin are extracted from PDFs, scans and photographed invoices, then reshaped into the invoice header, line-item and cost-analysis fields the company's report expects.</p>
+      </div>
+      <div class="step">
+        <h3>Match against history, check for duplicates</h3>
+        <p>Line items are compared against previously registered part numbers to reduce mismatches. The same email or the same invoice arriving twice is caught before it can be booked twice.</p>
+      </div>
+      <div class="step">
+        <h3>Write into the existing report</h3>
+        <p>Output goes into the designated sheets and columns of the company's own Excel workbook — no new system for anyone to learn, and every value carries its source and status.</p>
+      </div>
+      <div class="step gate">
+        <h3>Human confirmation<span class="badge">HUMAN GATE</span></h3>
+        <p>New part numbers, low-confidence fields and AI-suggested tariff rates sit in a pending state for review. Before anything is filed as a customs declaration, a person — company staff or the customs broker — confirms it. The system never promotes an unconfirmed suggestion to a final answer.</p>
+      </div>
+    </div>
+
+    <div class="route-wrap">
+    <table class="route-table">
+      <tr><th>Boundary</th><th>What it covers</th></tr>
+      <tr><td>Input</td><td>Supplier invoice PDFs and image attachments in the designated mailbox.</td></tr>
+      <tr><td>Output</td><td>The specified sheets and matching columns of the company's existing Excel report.</td></tr>
+      <tr><td>Automated</td><td>History part-number matching, duplicate-entry detection, tariff-rate source classification. <span class="tag go">System decides</span></td></tr>
+      <tr><td>Human decision</td><td>Confirming new part numbers, confirming AI-suggested rates, final sign-off before declaration. <span class="tag human">Person decides</span></td></tr>
+    </table>
+    </div>
+  </section>
+
+  <section>
+    <p class="eyebrow">Tariff Logic</p>
+    <h2>Cheap and certain first. AI last, and clearly labelled.</h2>
+    <p>When a new part number needs a tariff rate, the system works down an order of preference — from most reliable and cheapest to least certain. AI is only consulted when neither history nor similar records can answer, and its answer is never presented as settled.</p>
+
+    <div class="figure">
+      <svg viewBox="0 0 660 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Three-tier tariff lookup with a write-back loop from human confirmation to the history record">
+        <!-- Tier 1 -->
+        <rect class="svg-box" x="56" y="20" width="520" height="58" rx="2" stroke-width="1"/>
+        <rect x="56" y="20" width="4" height="58" fill="var(--tier1)"/>
+        <text class="svg-t m" x="76" y="40">TIER 01</text>
+        <text class="svg-t b" x="146" y="41">Confirmed history, same HS code</text>
+        <text class="svg-t s" x="146" y="60">Reused directly — this rate has already been through a human once.</text>
+        <path class="svg-arrow" d="M316 78 L316 96" marker-end="url(#ah)"/>
+        <text class="svg-t m" x="326" y="92">NO MATCH</text>
+
+        <!-- Tier 2 -->
+        <rect class="svg-box" x="56" y="100" width="520" height="58" rx="2" stroke-width="1"/>
+        <rect x="56" y="100" width="4" height="58" fill="var(--tier2)"/>
+        <text class="svg-t m" x="76" y="120">TIER 02</text>
+        <text class="svg-t b" x="146" y="121">Similar name or description in history</text>
+        <text class="svg-t s" x="146" y="140">Proposed from a comparable past item, flagged for a look.</text>
+        <path class="svg-arrow" d="M316 158 L316 176" marker-end="url(#ah)"/>
+        <text class="svg-t m" x="326" y="172">STILL NOTHING</text>
+
+        <!-- Tier 3 -->
+        <rect class="svg-box" x="56" y="180" width="520" height="58" rx="2" stroke-width="1"/>
+        <rect x="56" y="180" width="4" height="58" fill="var(--tier3)"/>
+        <text class="svg-t m" x="76" y="200">TIER 03</text>
+        <text class="svg-t b" x="146" y="201">AI suggestion</text>
+        <text class="svg-t s" x="146" y="220">Only now. Returned tagged AI SUGGESTED · UNCONFIRMED.</text>
+        <path class="svg-arrow" d="M316 238 L316 256" marker-end="url(#ah)"/>
+
+        <!-- Human gate -->
+        <rect x="56" y="260" width="520" height="44" rx="2" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1"/>
+        <text class="svg-t b" x="146" y="287" fill="var(--accent)">Human confirmation — staff or customs broker</text>
+        <text class="svg-t m" x="76" y="286" fill="var(--accent)">GATE</text>
+
+        <!-- Write-back loop -->
+        <path class="svg-arrow loop" d="M56 282 L26 282 L26 49 L54 49" marker-end="url(#ahl)"/>
+        <text class="svg-t m" x="18" y="170" fill="var(--accent)" transform="rotate(-90 18 170)" text-anchor="middle">WRITE BACK TO HISTORY</text>
+
+        <defs>
+          <marker id="ah" markerWidth="7" markerHeight="7" refX="5" refY="3.5" orient="auto">
+            <path d="M0,0 L6,3.5 L0,7 z" fill="var(--steel)"/>
+          </marker>
+          <marker id="ahl" markerWidth="7" markerHeight="7" refX="5" refY="3.5" orient="auto">
+            <path d="M0,0 L6,3.5 L0,7 z" fill="var(--accent)"/>
+          </marker>
+        </defs>
+      </svg>
+      <div class="cap">▲ Every confirmation makes the next identical case cheaper — the answer moves up to Tier 01 permanently</div>
+    </div>
+
+    <p style="margin-top:28px;">That last arrow is the part that compounds. A rate confirmed once stops being a lookup forever: the next invoice with the same HS code resolves at Tier 01, without an API call and without a review queue entry. The system gets cheaper to run the longer it runs, and the company's accumulated knowledge stays inside the company.</p>
+
+    <div class="callout stop">
+      <span class="label">Hard limit</span>
+      <p>AI only ever suggests. Before a declaration is formally filed, company staff or the customs broker must confirm the rate. An unconfirmed suggestion is never packaged as a final answer — not in the report, not in the export, not anywhere.</p>
+    </div>
+  </section>
+
+  <section>
+    <p class="eyebrow">Source &amp; Status</p>
+    <h2>Every rate says where it came from</h2>
+    <p>Each tariff rate carries its origin with it — <span class="srctag t1">PAST DECLARATION</span> <span class="srctag t2">SUPPLIER PROVIDED</span> <span class="srctag t3">AI · UNCONFIRMED</span> — so nobody has to re-guess the provenance of a number they didn't enter. Review time goes to the rows that actually need it.</p>
+
+    <div class="compare">
+      <div class="sheet">
+        <div class="sheet-label bad">✕ Hand-keyed</div>
+        <div class="sheet-scroll">
+        <table>
+          <tr><th style="text-align:left">Part No.</th><th>Duty</th><th>Source</th><th>FX</th></tr>
+          <tr><td class="pn">TW-4821-K</td><td>7.5%</td><td class="wrong">—</td><td class="wrong">—</td></tr>
+          <tr><td class="pn">TW-4822-N</td><td class="wrong">7.5%</td><td class="wrong">—</td><td class="wrong">—</td></tr>
+        </table>
+        </div>
+        <div class="sheet-note">Both rows look equally authoritative. In fact one came from a past declaration and the other was a guess by analogy — and the FX rate is whatever it was the last time someone remembered to update it.</div>
+      </div>
+      <div class="sheet">
+        <div class="sheet-label good">✓ Automated</div>
+        <div class="sheet-scroll">
+        <table>
+          <tr><th style="text-align:left">Part No.</th><th>Duty</th><th>Source</th><th>FX</th></tr>
+          <tr><td class="pn">TW-4821-K</td><td class="f">7.5%</td><td class="f">history</td><td class="f">31.42</td></tr>
+          <tr><td class="pn">TW-4822-N</td><td class="g">7.5%?</td><td class="g">AI · pending</td><td class="f">31.42</td></tr>
+        </table>
+        </div>
+        <div class="sheet-note">The uncertain row is visibly uncertain. Nothing is silently blank, nothing unconfirmed is dressed up as confirmed, and FX comes from a single consistent update.</div>
+      </div>
+    </div>
+
+    <div class="record-card" role="img" aria-label="Sample pending review record">
+      TW-4822-N · new part number, first seen INV-90341<br>
+      Duty rate: 7.5% &nbsp;<span class="srctag t3">AI · UNCONFIRMED</span><br>
+      Basis: no confirmed history for this HS code; nearest similar item TW-4390-N (7.5%)<br>
+      Needs: part number, description and application confirmed → then reusable
+    </div>
+    <p class="muted" style="font-size:13px; margin-top:10px;">▲ What lands in the review queue for a new part number (sample). Confirm it once and it becomes a Tier 01 record.</p>
+  </section>
+
+  <section>
+    <p class="eyebrow">FX</p>
+    <h2>Exchange rates update themselves — from somewhere else</h2>
+    <p>A separate, independent tool fetches and updates FX rates on a schedule, so cost analysis always runs on one consistent and reasonably current number instead of whatever was last pasted in. Keeping it separate from invoice processing is a permissions decision, not a packaging one: the tool that reaches out to the public internet is not the tool holding the invoice pipeline's access.</p>
+    <div class="callout">
+      <span class="label">Design point</span>
+      <p>The FX tool only does FX. The invoice tool only does invoices. Split this way, permissions, maintenance and blast radius all stay small enough to reason about.</p>
+    </div>
+  </section>
+
+  <section>
+    <p class="eyebrow">Security Architecture</p>
+    <h2>Least privilege, drawn as a boundary</h2>
+    <p>The point of the security design isn't to give every component the same broad set of permissions — it's to separate the core data flow from the parts that need to query outward. The invoice core reads one designated mailbox and writes one designated report through controlled Google authorization. It does not call public FX or AI services itself.</p>
+
+    <div class="figure">
+      <svg viewBox="0 0 680 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Permission boundaries between the invoice core, separate tools, and external services">
+        <!-- Core zone -->
+        <rect class="svg-zone" x="12" y="30" width="238" height="250" rx="3"/>
+        <text class="svg-t m" x="24" y="22">CORE — INVOICE PIPELINE</text>
+        <rect class="svg-box" x="34" y="52" width="194" height="52" rx="2" stroke-width="1"/>
+        <text class="svg-t b" x="48" y="76">Designated mailbox</text>
+        <text class="svg-t s" x="48" y="93">read only</text>
+        <path class="svg-arrow" d="M131 104 L131 128" marker-end="url(#a2)"/>
+        <rect class="svg-box" x="34" y="132" width="194" height="52" rx="2" stroke-width="1"/>
+        <text class="svg-t b" x="48" y="156">Extract &amp; match</text>
+        <text class="svg-t s" x="48" y="173">fields, history, duplicates</text>
+        <path class="svg-arrow" d="M131 184 L131 208" marker-end="url(#a2)"/>
+        <rect class="svg-box" x="34" y="212" width="194" height="52" rx="2" stroke-width="1"/>
+        <text class="svg-t b" x="48" y="236">Company Excel report</text>
+        <text class="svg-t s" x="48" y="253">write to specified sheets</text>
+
+        <!-- Tools zone -->
+        <rect class="svg-zone" x="266" y="30" width="176" height="250" rx="3"/>
+        <text class="svg-t m" x="278" y="22">SEPARATE TOOLS</text>
+        <rect class="svg-box" x="288" y="72" width="132" height="52" rx="2" stroke-width="1"/>
+        <text class="svg-t b" x="302" y="96">FX tool</text>
+        <text class="svg-t s" x="302" y="113">rates only</text>
+        <rect class="svg-box" x="288" y="180" width="132" height="52" rx="2" stroke-width="1"/>
+        <text class="svg-t b" x="302" y="204">Tariff tool</text>
+        <text class="svg-t s" x="302" y="221">suggestion + source</text>
+
+        <!-- External zone -->
+        <rect class="svg-zone" x="458" y="30" width="210" height="250" rx="3"/>
+        <text class="svg-t m" x="470" y="22">EXTERNAL SERVICES</text>
+        <rect class="svg-box" x="480" y="72" width="166" height="52" rx="2" stroke-width="1"/>
+        <text class="svg-t b" x="494" y="96">FX rate service</text>
+        <text class="svg-t s" x="494" y="113">public API</text>
+        <rect class="svg-box" x="480" y="180" width="166" height="52" rx="2" stroke-width="1"/>
+        <text class="svg-t b" x="494" y="204">AI (Claude)</text>
+        <text class="svg-t s" x="494" y="221">called only at Tier 03</text>
+
+        <!-- flows: tools out to external -->
+        <path class="svg-arrow" d="M420 98 L476 98" marker-end="url(#a2)"/>
+        <path class="svg-arrow" d="M420 206 L476 206" marker-end="url(#a2)"/>
+        <!-- flows: tools back into core data -->
+        <path class="svg-arrow" d="M288 112 L252 112 L252 232 L232 232" marker-end="url(#a2)"/>
+        <path class="svg-arrow" d="M288 220 L262 220 L262 238 L232 238" marker-end="url(#a2)"/>
+
+        <text class="svg-t m" x="340" y="266" text-anchor="middle" fill="var(--accent)">NO DIRECT CORE → INTERNET PATH</text>
+
+        <defs>
+          <marker id="a2" markerWidth="7" markerHeight="7" refX="5" refY="3.5" orient="auto">
+            <path d="M0,0 L6,3.5 L0,7 z" fill="var(--steel)"/>
+          </marker>
+        </defs>
+      </svg>
+      <div class="cap">▲ Two tools cross the boundary outward. The invoice core is not one of them.</div>
+    </div>
+
+    <div class="secure">
+      <div class="rule">
+        <span class="no">SCOPE 01</span>
+        <h3>Invoice core</h3>
+        <p>Reads the designated mailbox and nothing else; writes the designated company report and nothing else.</p>
+      </div>
+      <div class="rule">
+        <span class="no">SCOPE 02</span>
+        <h3>FX tool</h3>
+        <p>Holds only the permissions the FX service requires. No mailbox access, no report-wide access.</p>
+      </div>
+      <div class="rule">
+        <span class="no">SCOPE 03</span>
+        <h3>Tariff tool</h3>
+        <p>Calls AI only when the first two tiers come back empty, and returns the suggestion together with its source status.</p>
+      </div>
+      <div class="rule">
+        <span class="no">SCOPE 04</span>
+        <h3>API keys</h3>
+        <p>Stored in Google's backend security settings. They never appear in the report, in a file, or in the code.</p>
+      </div>
+      <div class="rule">
+        <span class="no">SCOPE 05</span>
+        <h3>Fault isolation</h3>
+        <p>If an outward-querying tool breaks, the failure stays there. It does not escalate into a risk to the invoice data flow.</p>
+      </div>
+      <div class="rule">
+        <span class="no">SCOPE 06</span>
+        <h3>Honest phrasing</h3>
+        <p>We don't claim the core is "completely offline". The accurate statement is narrower — and we prefer the accurate one.</p>
+      </div>
+    </div>
+
+    <div class="callout">
+      <span class="label">How we describe it</span>
+      <p>Rather than saying the core system is "completely disconnected from the internet", the precise statement is this: the core does not call public network services directly. It accesses the designated mailbox and report through controlled Google authorization.</p>
+    </div>
+  </section>
+
+  <section>
+    <p class="eyebrow">Review &amp; Governance</p>
+    <h2>Automation reduces repetition, not accountability</h2>
+    <p>The system's job is to make it obvious which data is backed by confirmed history, which is new, and which is only a suggestion. Four paths through review:</p>
+    <div class="route-wrap">
+    <table class="route-table">
+      <tr><th>Case</th><th>What happens</th></tr>
+      <tr><td>Routine</td><td>Backed by confirmed history. Quick check, then booked.</td></tr>
+      <tr><td>New part number</td><td>Part number, description and application are confirmed first, then stored as a record future invoices can reuse.</td></tr>
+      <tr><td>AI-suggested rate</td><td>Treated as formal data only after company staff or the customs broker confirm it.</td></tr>
+      <tr><td>Exception</td><td>Keeps its error or pending state deliberately — the goal is no silent failure.</td></tr>
+    </table>
+    </div>
+  </section>
+
+  <section>
+    <p class="eyebrow">Expected Effect</p>
+    <h2>What we expect, stated as expectation</h2>
+    <p>This project is in progress. The effects below are what the design is built to produce — they are not measured results, and we won't present them as such. Once the system is live, they become quantifiable against average handling time per invoice, manual correction rate, duplicate-entry count, and number of AI lookups.</p>
+    <div class="route-wrap">
+    <table class="route-table">
+      <tr><th>Area</th><th>What the system changes</th><th>Expected effect</th></tr>
+      <tr><td>Data entry time</td><td>Line-by-line typing becomes exception review</td><td>Shorter handling time on routine invoices</td></tr>
+      <tr><td>Missed / mistyped entries</td><td>Automatic field extraction plus duplicate detection</td><td>Fewer manual-handling errors</td></tr>
+      <tr><td>New part numbers</td><td>Recorded first, then flagged as pending</td><td>The flow no longer stalls</td></tr>
+      <tr><td>Tariff lookup</td><td>History → similar → AI, in that order</td><td>Reusable knowledge accumulates in-house</td></tr>
+      <tr><td>Data security</td><td>Core separated from outward-querying tools</td><td>Smaller permission and risk surface</td></tr>
+    </table>
+    </div>
+
+    <h3 style="margin-top:40px; font-size:19px;">Acceptance criteria we're holding ourselves to</h3>
+    <ul class="checks">
+      <li><b>Extraction completeness</b> — every required field either has a value or an explicit marker saying it's missing.</li>
+      <li><b>Write accuracy</b> — columns, sheets and data types conform to the existing report's rules.</li>
+      <li><b>Exception visibility</b> — new part numbers, low-confidence data and AI suggestions can all be reviewed in one place.</li>
+      <li><b>Duplicate protection</b> — the same email or invoice cannot be booked twice.</li>
+      <li><b>Permission conformance</b> — each tool holds only the permissions its own job requires.</li>
+    </ul>
+  </section>
+
+  <div class="pull">
+    <p>Automate what can be automated. Mark clearly what isn't certain. Keep sensitive data and outward permissions permanently apart.</p>
+  </div>
+
+  <div class="cta">
+    <h2>If your paperwork arrives as email attachments, this transfers</h2>
+    <p class="muted">Invoices, packing lists, purchase orders — anything that arrives as a document and ends up<br>retyped into a spreadsheet by a person. Show us how you're doing it today.</p>
+    <a class="btn" href="mailto:info@vangatechai.com">Tell us about your invoice process</a>
+  </div>
+
+  <footer>
+    This project is in progress; the design has been agreed with the client and the system is being built.<br>
+    All part numbers, invoice numbers, rates and figures on this page are illustrative samples — the workflow architecture, tiering logic and permission boundaries match the agreed brief.<br>
+    No performance results are claimed. Measurement begins at go-live.
+  </footer>
+</main>
+
+</body>
+</html>
