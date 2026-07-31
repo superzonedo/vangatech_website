@@ -191,6 +191,48 @@
   .cap-status{font-family:'IBM Plex Mono',monospace; font-size:0.75rem; color:#8fbdb2; white-space:nowrap;}
   .cap-note{ font-family:'IBM Plex Mono',monospace; font-size:0.85rem; color:#c9c6bc; border-left:2px solid var(--teal); padding-left:20px; line-height:1.8; }
 
+  /* ---- 02 / HOW WE WORK ---- */
+  #method{border-bottom:1px solid var(--line);}
+  .method-lead{
+    font-family:'IBM Plex Mono',monospace; font-size:0.9rem; line-height:1.85;
+    color:var(--ink-soft); border-left:2px solid var(--teal);
+    padding-left:22px; max-width:62ch; margin:0 0 48px;
+  }
+  html[lang="zh"] .method-lead{font-family:'Noto Serif TC',serif; font-size:1rem;}
+  .method-grid{
+    display:grid; grid-template-columns:repeat(2,1fr); gap:1px;
+    background:var(--line); border:1px solid var(--line);
+  }
+  .method-card{background:var(--paper); padding:34px 30px;}
+  .method-tag{
+    font-family:'IBM Plex Mono',monospace; font-size:0.72rem;
+    color:var(--teal-deep); display:block; margin-bottom:14px;
+  }
+  .method-card h3{font-size:1.18rem; margin-bottom:12px; line-height:1.35;}
+  .method-card p{color:var(--ink-soft); font-size:0.95rem; margin:0;}
+  .method-proof{
+    display:block; margin-top:18px; padding-top:14px;
+    border-top:1px dashed var(--line);
+    font-family:'IBM Plex Mono',monospace; font-size:0.75rem;
+    color:var(--gold); line-height:1.7;
+  }
+  html[lang="zh"] .method-proof{font-family:'Noto Serif TC',serif; font-size:0.82rem;}
+
+  .contrast{
+    margin-top:56px; border:1px solid var(--line); background:var(--line);
+    display:flex; flex-direction:column; gap:1px;
+  }
+  .c-row{display:grid; grid-template-columns:190px repeat(3,1fr); gap:1px; background:var(--line);}
+  .c-row > *{background:var(--paper); padding:15px 18px; font-size:0.9rem; color:var(--ink-soft);}
+  .c-label{font-family:'IBM Plex Mono',monospace; font-size:0.73rem; letter-spacing:0.03em; color:var(--ink);}
+  .c-head > *{
+    background:var(--paper-deep); font-family:'IBM Plex Mono',monospace;
+    font-size:0.73rem; letter-spacing:0.08em; text-transform:uppercase; color:var(--ink-soft);
+  }
+  .c-us{color:var(--ink); font-weight:500;}
+  .c-head .c-us{color:var(--stamp-red);}
+  .c-who{display:none;}
+
   #contact{text-align:center;}
   #contact h2{font-size:clamp(1.9rem,4.5vw,2.8rem); max-width:18ch; margin:0 auto 20px;}
   #contact p{max-width:48ch; margin:0 auto 36px; color:var(--ink-soft); font-size:1.05rem;}
@@ -204,11 +246,23 @@
   .reveal{opacity:0; transform:translateY(16px); transition:opacity .6s ease, transform .6s ease;}
   .reveal.in{opacity:1; transform:translateY(0);}
 
+  @media (max-width:980px){
+    .navlinks{gap:16px;}
+    .nav{gap:12px;}
+  }
   @media (max-width:760px){
     .navlinks{display:none;}
     .navcta{display:none;}
     .navtoggle-btn{display:block;}
     .service-grid{grid-template-columns:1fr;}
+    .method-grid{grid-template-columns:1fr;}
+    .c-row{grid-template-columns:1fr;}
+    .c-head{display:none;}
+    .c-label{background:var(--paper-deep);}
+    .c-who{
+      display:block; font-family:'IBM Plex Mono',monospace; font-size:0.68rem;
+      letter-spacing:0.08em; text-transform:uppercase; color:var(--stamp-red); margin-bottom:5px;
+    }
     .case{grid-template-columns:1fr; gap:14px;}
     .stamp{justify-self:start; transform:rotate(-3deg);}
     .cap-grid{grid-template-columns:1fr; gap:32px;}
@@ -230,6 +284,7 @@
     </div>
     <nav class="navlinks">
       <a href="#services" data-en="Services" data-zh="服務">Services</a>
+      <a href="#method" data-en="How we work" data-zh="工作方式">How we work</a>
       <a href="#cases" data-en="Case Files" data-zh="案例">Case Files</a>
       <a href="#capability" data-en="Capability" data-zh="能力">Capability</a>
     </nav>
@@ -241,6 +296,7 @@
   </div>
   <nav class="mobile-menu" id="mobileMenu">
     <a href="#services" data-en="Services" data-zh="服務">Services</a>
+    <a href="#method" data-en="How we work" data-zh="工作方式">How we work</a>
     <a href="#cases" data-en="Case Files" data-zh="案例">Case Files</a>
     <a href="#capability" data-en="Capability" data-zh="能力">Capability</a>
     <a href="mailto:info@vangatechai.com" data-en="Get in touch" data-zh="合作洽詢">Get in touch</a>
@@ -293,11 +349,85 @@
   </div>
 </section>
 
+<section id="method">
+  <div class="wrap">
+    <div class="section-head">
+      <div>
+        <div class="section-num">02 / HOW WE WORK</div>
+        <h2 data-en="An engineer goes in. Not a licence, not a deck." data-zh="我們派工程師進去，不是給你一組帳號。">An engineer goes in. Not a licence, not a deck.</h2>
+      </div>
+      <p class="section-desc" data-en="The gap between what software can do and what a company actually needs gets closed by a person, on site. That is the whole method." data-zh="「軟體做得到什麼」和「這家公司實際需要什麼」之間有一道鴻溝，補起來的方式是派人進到現場。這就是整套做法。">The gap between what software can do and what a company actually needs gets closed by a person, on site. That is the whole method.</p>
+    </div>
+
+    <p class="method-lead reveal" data-en="Most AI vendors sell a tool and leave the integration to you. Most consultants map the process and leave the building to someone else. We do both &mdash; forward deployed engineering, adapted for companies that don&rsquo;t have an IT department. And we are measured on whether the workflow actually changed." data-zh="多數 AI 廠商賣工具，整合的問題丟給客戶。多數顧問畫流程圖，實作的問題丟給別人。我們兩件事都做——為沒有 IT 部門的公司設計的進駐式工程。而且成敗看的是流程有沒有真的改變。">Most AI vendors sell a tool and leave the integration to you. Most consultants map the process and leave the building to someone else. We do both &mdash; forward deployed engineering, adapted for companies that don&rsquo;t have an IT department. And we are measured on whether the workflow actually changed.</p>
+
+    <div class="method-grid">
+
+      <div class="method-card reveal">
+        <span class="method-tag" data-en="01 · ON SITE" data-zh="01 · 進到現場">01 · ON SITE</span>
+        <h3 data-en="We start from your real files" data-zh="從你們的真實檔案開始">We start from your real files</h3>
+        <p data-en="Not a requirements document. The actual invoices, the actual spreadsheet, the exceptions nobody ever wrote down. You cannot design around a company&rsquo;s data without looking at it first." data-zh="不是規格書。是實際的發票、實際的那份 Excel、還有從來沒有人寫下來的例外狀況。沒有先看過真實檔案，就設計不出接得上的系統。">Not a requirements document. The actual invoices, the actual spreadsheet, the exceptions nobody ever wrote down. You cannot design around a company&rsquo;s data without looking at it first.</p>
+        <span class="method-proof" data-en="DACO &mdash; found in the client&rsquo;s own file: a 5 pcs price pasted into the 10 pcs column." data-zh="DACO — 在客戶自己的檔案裡抓到：5 pcs 的價格被貼進 10 pcs 欄位。">DACO &mdash; found in the client&rsquo;s own file: a 5 pcs price pasted into the 10 pcs column.</span>
+      </div>
+
+      <div class="method-card reveal">
+        <span class="method-tag" data-en="02 · NO NEW SYSTEM" data-zh="02 · 不換系統">02 · NO NEW SYSTEM</span>
+        <h3 data-en="Output goes into the tools you already run" data-zh="輸出寫進你們原本就在用的工具">Output goes into the tools you already run</h3>
+        <p data-en="Your mailbox, your workbook, your order backend. Nothing new to log into and nothing new to maintain &mdash; which matters, because a company without an IT team has no budget for either." data-zh="你們的信箱、你們的活頁簿、你們的訂單後台。沒有新系統要登入，也沒有新系統要養——這件事很重要，因為沒有 IT 團隊的公司，這兩筆預算都不存在。">Your mailbox, your workbook, your order backend. Nothing new to log into and nothing new to maintain &mdash; which matters, because a company without an IT team has no budget for either.</p>
+        <span class="method-proof" data-en="Tonwall &mdash; output writes into the client&rsquo;s existing Excel workbook, named sheets and named columns." data-zh="東吳行 — 輸出寫進客戶原本那份 Excel 活頁簿的指定分頁與指定欄位。">Tonwall &mdash; output writes into the client&rsquo;s existing Excel workbook, named sheets and named columns.</span>
+      </div>
+
+      <div class="method-card reveal">
+        <span class="method-tag" data-en="03 · WHERE IT MATTERS" data-zh="03 · 關卡位置">03 · WHERE IT MATTERS</span>
+        <h3 data-en="The human checkpoint sits where the liability sits" data-zh="人工關卡設在責任所在之處">The human checkpoint sits where the liability sits</h3>
+        <p data-en="Not where the code is hardest &mdash; where someone is answerable if it turns out wrong. Everything above that line is automated. Everything at it stays with a person, and is marked unconfirmed until they act." data-zh="不是設在技術最難的地方，而是設在出錯時誰要負責的地方。線以上全部自動化，線上的判斷留給人，在人確認之前一律標記為未確認。">Not where the code is hardest &mdash; where someone is answerable if it turns out wrong. Everything above that line is automated. Everything at it stays with a person, and is marked unconfirmed until they act.</p>
+        <span class="method-proof" data-en="Tonwall &mdash; an AI tariff suggestion is never promoted to final. A broker or staff member confirms it before declaration." data-zh="東吳行 — AI 建議的稅率永遠不會被升級為最終答案，正式報關前由報關行或公司同仁確認。">Tonwall &mdash; an AI tariff suggestion is never promoted to final. A broker or staff member confirms it before declaration.</span>
+      </div>
+
+      <div class="method-card reveal">
+        <span class="method-tag" data-en="04 · IT COMPOUNDS" data-zh="04 · 知識累積">04 · IT COMPOUNDS</span>
+        <h3 data-en="Confirmed knowledge stays with you" data-zh="確認過的知識留在你們公司">Confirmed knowledge stays with you</h3>
+        <p data-en="Every value a person confirms is written back and reused, so the same question is never paid for twice. The system gets cheaper the longer it runs, and what it learns stays inside your company rather than ours." data-zh="每一個經過人工確認的值都會回存並重複使用，同一個問題不會被查第二次。系統跑越久越便宜，而且累積下來的知識留在你們公司，不是留在我們這裡。">Every value a person confirms is written back and reused, so the same question is never paid for twice. The system gets cheaper the longer it runs, and what it learns stays inside your company rather than ours.</p>
+        <span class="method-proof" data-en="Tonwall &mdash; a confirmed tariff code resolves straight from history on every later invoice." data-zh="東吳行 — 確認過的稅則號列，之後每一張發票都直接從歷史紀錄命中。">Tonwall &mdash; a confirmed tariff code resolves straight from history on every later invoice.</span>
+      </div>
+
+    </div>
+
+    <div class="contrast reveal">
+      <div class="c-row c-head">
+        <span></span>
+        <span data-en="Software vendor" data-zh="軟體廠商">Software vendor</span>
+        <span data-en="Consultant" data-zh="顧問公司">Consultant</span>
+        <span class="c-us">VangaTech</span>
+      </div>
+      <div class="c-row">
+        <span class="c-label" data-en="Who defines the problem" data-zh="誰定義問題">Who defines the problem</span>
+        <span><span class="c-who" data-en="Software vendor" data-zh="軟體廠商">Software vendor</span><span data-en="You do" data-zh="客戶自己">You do</span></span>
+        <span><span class="c-who" data-en="Consultant" data-zh="顧問公司">Consultant</span><span data-en="They do, on paper" data-zh="顧問，在紙上">They do, on paper</span></span>
+        <span class="c-us"><span class="c-who">VangaTech</span><span data-en="We do, on site" data-zh="我們，在現場">We do, on site</span></span>
+      </div>
+      <div class="c-row">
+        <span class="c-label" data-en="What you receive" data-zh="你拿到什麼">What you receive</span>
+        <span><span class="c-who" data-en="Software vendor" data-zh="軟體廠商">Software vendor</span><span data-en="A licence and a login" data-zh="一份授權與一組帳號">A licence and a login</span></span>
+        <span><span class="c-who" data-en="Consultant" data-zh="顧問公司">Consultant</span><span data-en="A deck and a process map" data-zh="一份簡報與流程圖">A deck and a process map</span></span>
+        <span class="c-us"><span class="c-who">VangaTech</span><span data-en="A system running in your own tools" data-zh="跑在你們既有工具裡的系統">A system running in your own tools</span></span>
+      </div>
+      <div class="c-row">
+        <span class="c-label" data-en="Measured on" data-zh="成敗看什麼">Measured on</span>
+        <span><span class="c-who" data-en="Software vendor" data-zh="軟體廠商">Software vendor</span><span data-en="Seats sold" data-zh="賣出幾套">Seats sold</span></span>
+        <span><span class="c-who" data-en="Consultant" data-zh="顧問公司">Consultant</span><span data-en="Report delivered" data-zh="報告有沒有交">Report delivered</span></span>
+        <span class="c-us"><span class="c-who">VangaTech</span><span data-en="Whether the workflow actually changed" data-zh="流程有沒有真的改變">Whether the workflow actually changed</span></span>
+      </div>
+    </div>
+
+  </div>
+</section>
+
 <section id="cases">
   <div class="wrap">
     <div class="section-head">
       <div>
-        <div class="section-num">02 / CASE FILES</div>
+        <div class="section-num">03 / CASE FILES</div>
         <h2 data-en="Case files" data-zh="案例紀錄">Case files</h2>
       </div>
       <p class="section-desc" data-en="Ordered by delivery date, marked with current status — completed or in progress, all of them live systems." data-zh="依交付時間排序，標記目前狀態——完成的、進行中的，都是實際上線的系統。">Ordered by delivery date, marked with current status — completed or in progress, all of them live systems.</p>
@@ -355,7 +485,7 @@
   <div class="wrap">
     <div class="section-head">
       <div>
-        <div class="section-num">03 / CAPABILITY</div>
+        <div class="section-num">04 / CAPABILITY</div>
         <h2 data-en="How we build" data-zh="我們如何打造系統">How we build</h2>
       </div>
       <p class="section-desc" data-en="Every case file above was built with the same toolchain — this is working capability, not a pitch." data-zh="每一件案例都是用同一套工具鏈打造——不是顧問話術，是實際的開發能力。">Every case file above was built with the same toolchain — this is working capability, not a pitch.</p>
@@ -427,3 +557,4 @@
 
 </body>
 </html>
+
